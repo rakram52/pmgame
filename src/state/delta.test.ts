@@ -80,4 +80,43 @@ DELTA>>>`
   it('strips the delta block from prose', () => {
     expect(extractProse(goodReply)).not.toContain('optionRisks')
   })
+
+  // Regression: models sometimes drop a bracket on the close (DELTA>>), which
+  // used to leak the raw JSON into the on-screen scene.
+  it('tolerates a broken close (DELTA>>) and keeps the JSON out of the prose', () => {
+    const broken = `The scene.
+<<<DELTA
+{ "options": { "A": "a", "B": "b", "C": "c" }, "stateBlock": { "approval": -1 } }
+DELTA>>`
+    const res = extractDelta(broken)
+    expect(res.ok).toBe(true)
+    if (res.ok) {
+      expect(res.delta.options.A).toBe('a')
+      expect(res.delta.stateBlock?.approval).toBe(-1)
+      expect(res.prose).toBe('The scene.')
+      expect(res.prose).not.toContain('optionRisks')
+      expect(res.prose).not.toContain('stateBlock')
+      expect(res.prose).not.toContain('DELTA')
+    }
+    expect(extractProse(broken)).not.toContain('stateBlock')
+  })
+
+  it('tolerates an extra bracket (DELTA>>>>) on the close', () => {
+    const res = extractDelta('Scene.\n<<<DELTA\n{ "options": { "A": "a", "B": "b", "C": "c" } }\nDELTA>>>>')
+    expect(res.ok).toBe(true)
+    if (res.ok) expect(res.prose).toBe('Scene.')
+  })
+
+  it('recovers when the model omits the closing sentinel entirely', () => {
+    const noClose = `Scene here.
+<<<DELTA
+{ "options": { "A": "a", "B": "b", "C": "c" }, "stateBlock": { "approval": 2 } }`
+    const res = extractDelta(noClose)
+    expect(res.ok).toBe(true)
+    if (res.ok) {
+      expect(res.delta.stateBlock?.approval).toBe(2)
+      expect(res.prose).toBe('Scene here.')
+      expect(res.prose).not.toContain('options')
+    }
+  })
 })

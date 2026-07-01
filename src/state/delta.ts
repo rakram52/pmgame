@@ -151,24 +151,82 @@ export type DeltaExtraction =
   | { ok: true; prose: string; delta: TurnDelta; warnings: string[] }
   | { ok: false; prose: string; error: string; stage: 'fence' | 'json' | 'schema' }
 
-const SENTINEL_RE = /<<<DELTA([\s\S]*?)DELTA>>>/gi
+// The open is <<<DELTA (any inner whitespace); the close is DELTA followed by
+// TWO OR MORE '>'. Models sometimes drop or add a bracket (DELTA>> / DELTA>>>>),
+// which previously leaked the raw JSON into the scene because the strict prose
+// stripper only recognised exactly "DELTA>>>". Locating and stripping now share
+// one tolerant path so whatever gets PARSED as the delta also gets REMOVED.
+const OPEN_RE = /<<<\s*DELTA\b/i
+const CLOSE_RE = /DELTA\s*>>+/i
 const FENCE_RE = /```(?:delta|json)?\s*([\s\S]*?)```/gi
 
-/** Pull the last matching block for a given regex (models sometimes restate). */
-function lastMatch(raw: string, re: RegExp): string | null {
+interface Located {
+  json: string
+  /** [start, end) span of the whole block in raw, to remove from the prose. */
+  start: number
+  end: number
+}
+
+/** Find the delta JSON to parse AND the exact span to strip from the prose.
+ *  Tries, in order: a <<<DELTA … DELTA>>> sentinel (tolerant of a broken or
+ *  missing close), a fenced json/delta block, then a bare trailing JSON object. */
+function locateDelta(raw: string): Located | null {
+  // 1. Sentinel form. Use the LAST opening (models sometimes restate).
+  const openG = new RegExp(OPEN_RE.source, 'ig')
   let m: RegExpExecArray | null
-  let last: string | null = null
-  re.lastIndex = 0
-  while ((m = re.exec(raw)) !== null) last = m[1]
-  return last
+  let lastOpen: RegExpExecArray | null = null
+  while ((m = openG.exec(raw)) !== null) lastOpen = m
+  if (lastOpen) {
+    const contentStart = lastOpen.index + lastOpen[0].length
+    const closeG = new RegExp(CLOSE_RE.source, 'ig')
+    closeG.lastIndex = contentStart
+    const closeM = closeG.exec(raw)
+    if (closeM) {
+      return { json: raw.slice(contentStart, closeM.index), start: lastOpen.index, end: closeM.index + closeM[0].length }
+    }
+    // Opened but never properly closed — take the JSON object that follows and
+    // absorb any stray "DELTA>" / "DELTA" tail so it can't leak into the scene.
+    const seg = raw.slice(contentStart)
+    const s = seg.indexOf('{')
+    const e = seg.lastIndexOf('}')
+    if (s !== -1 && e > s) {
+      let end = contentStart + e + 1
+      const tail = /^\s*DELTA\s*>*/i.exec(raw.slice(end))
+      if (tail) end += tail[0].length
+      return { json: seg.slice(s, e + 1), start: lastOpen.index, end }
+    }
+    return null
+  }
+
+  // 2. Fenced block that looks like our delta (contains "options"). Take last.
+  let fm: RegExpExecArray | null
+  let lastFence: RegExpExecArray | null = null
+  FENCE_RE.lastIndex = 0
+  while ((fm = FENCE_RE.exec(raw)) !== null) if (fm[1].includes('"options"')) lastFence = fm
+  if (lastFence) return { json: lastFence[1], start: lastFence.index, end: lastFence.index + lastFence[0].length }
+
+  // 3. Bare trailing JSON object (API path), only if it holds our delta.
+  const start = raw.indexOf('{')
+  const end = raw.lastIndexOf('}')
+  if (start !== -1 && end > start && raw.slice(start, end + 1).includes('"options"')) {
+    return { json: raw.slice(start, end + 1), start, end: end + 1 }
+  }
+  return null
+}
+
+/** Remove any delta blocks (tolerant of a broken/missing close) so the raw JSON
+ *  can never appear in the narrated scene. */
+function stripBlocks(raw: string): string {
+  return raw
+    .replace(/<<<\s*DELTA[\s\S]*?DELTA\s*>>+/gi, '') // closed sentinel (>> or more)
+    .replace(/<<<\s*DELTA[\s\S]*$/i, '') // an opened-but-unclosed sentinel → to end
+    .replace(/```(?:delta|json)[\s\S]*?```/gi, '') // fenced json/delta block
+    .trim()
 }
 
 /** Everything outside the delta block, trimmed — the narrative prose. */
 export function extractProse(raw: string): string {
-  return raw
-    .replace(SENTINEL_RE, '')
-    .replace(/```(?:delta|json)[\s\S]*?```/gi, '')
-    .trim()
+  return stripBlocks(raw)
 }
 
 /** Tolerate the small JSON sins chat models commit. */
@@ -181,41 +239,21 @@ function cleanJson(s: string): string {
     .trim()
 }
 
-function findRawBlock(raw: string): string | null {
-  const sentinel = lastMatch(raw, SENTINEL_RE)
-  if (sentinel) return sentinel
-  // Fallback: a fenced block that looks like it holds our delta.
-  let m: RegExpExecArray | null
-  let candidate: string | null = null
-  FENCE_RE.lastIndex = 0
-  while ((m = FENCE_RE.exec(raw)) !== null) {
-    if (m[1].includes('"options"')) candidate = m[1]
-  }
-  if (candidate) return candidate
-  // Final fallback (API path): the whole reply is a bare JSON object.
-  const trimmed = raw.trim()
-  const start = trimmed.indexOf('{')
-  const end = trimmed.lastIndexOf('}')
-  if (start !== -1 && end > start && trimmed.includes('"options"')) {
-    return trimmed.slice(start, end + 1)
-  }
-  return null
-}
-
 /**
  * Extract prose + validated delta from a raw model reply. Never throws:
  * returns a discriminated result so the UI can drive the repair flow.
  */
 export function extractDelta(raw: string): DeltaExtraction {
-  const prose = extractProse(raw)
-  const block = findRawBlock(raw)
-  if (!block) {
-    return { ok: false, prose, error: 'No <<<DELTA … DELTA>>> block found in the reply.', stage: 'fence' }
+  const located = locateDelta(raw)
+  if (!located) {
+    return { ok: false, prose: stripBlocks(raw), error: 'No <<<DELTA … DELTA>>> block found in the reply.', stage: 'fence' }
   }
+  // Prose = raw with the located block removed, then any stray blocks stripped.
+  const prose = stripBlocks(raw.slice(0, located.start) + raw.slice(located.end))
 
   let parsed: unknown
   try {
-    parsed = JSON.parse(cleanJson(block))
+    parsed = JSON.parse(cleanJson(located.json))
   } catch (e) {
     return { ok: false, prose, error: `Delta block is not valid JSON: ${(e as Error).message}`, stage: 'json' }
   }
