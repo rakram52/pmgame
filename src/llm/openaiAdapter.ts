@@ -21,9 +21,10 @@ export async function callOpenAI(conn: Connection, prompt: string, signal?: Abor
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.8,
-      // Ceiling only (you pay for tokens *generated*, not this cap) — one scene +
-      // its delta sits well under this, so it bounds a runaway reply and cost.
-      max_tokens: 4096,
+      // Ceiling only (you pay for tokens *generated*, not this cap) — bounds a
+      // runaway reply. Set high enough that a thinking model's reasoning tokens
+      // plus the scene + delta never get truncated.
+      max_tokens: 8192,
     }),
   })
   if (!res.ok) {

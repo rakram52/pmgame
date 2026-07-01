@@ -29,9 +29,9 @@ export const PRESETS: Preset[] = [
     label: 'Google Gemini',
     apiType: 'openai',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    defaultModel: 'gemini-2.5-flash-lite',
+    defaultModel: 'gemini-2.5-flash',
     keyUrl: 'https://aistudio.google.com/apikey',
-    note: 'Google’s OpenAI-compatible endpoint (AI Studio key). Flash-Lite is very cheap — well under £1 for a full 300-turn game — and has a free tier (rate-limited). For richer prose switch the model to gemini-2.5-flash (still cheap).',
+    note: 'Google’s OpenAI-compatible endpoint (AI Studio key). gemini-2.5-flash is the sweet spot — sharp prose, ~£1–2 for a full 300-turn game. For near-zero cost use gemini-2.5-flash-lite; for top quality, gemini-3.5-flash or gemini-3.1-pro-preview.',
   },
   {
     id: 'anthropic',
