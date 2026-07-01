@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { healConnection, RETIRED_MODELS, presetById } from './presets'
+import { healConnection, RETIRED_MODELS, presetById, modelChain } from './presets'
 import type { Connection } from './types'
 
 const base: Connection = {
@@ -33,5 +33,18 @@ describe('healConnection', () => {
 
   it('passes null through', () => {
     expect(healConnection(null)).toBeNull()
+  })
+})
+
+describe('gemini preset', () => {
+  const g = presetById('gemini')!
+  it('is an OpenAI-compatible provider on the AI Studio endpoint', () => {
+    expect(g).toBeTruthy()
+    expect(g.apiType).toBe('openai')
+    expect(g.baseUrl).toMatch(/generativelanguage\.googleapis\.com\/v1beta\/openai$/)
+  })
+  it('does not borrow the OpenRouter free-model fallback chain', () => {
+    const conn: Connection = { ...base, presetId: 'gemini', baseUrl: g.baseUrl, model: g.defaultModel }
+    expect(modelChain(conn)).toEqual([g.defaultModel])
   })
 })

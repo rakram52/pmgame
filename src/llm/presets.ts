@@ -25,6 +25,15 @@ export const PRESETS: Preset[] = [
     note: 'Free open-source models. Needs a free OpenRouter key (no card). Models change — edit the model id if one stops working (e.g. meta-llama/llama-3.3-70b-instruct:free).',
   },
   {
+    id: 'gemini',
+    label: 'Google Gemini',
+    apiType: 'openai',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    defaultModel: 'gemini-2.5-flash-lite',
+    keyUrl: 'https://aistudio.google.com/apikey',
+    note: 'Google’s OpenAI-compatible endpoint (AI Studio key). Flash-Lite is very cheap — well under £1 for a full 300-turn game — and has a free tier (rate-limited). For richer prose switch the model to gemini-2.5-flash (still cheap).',
+  },
+  {
     id: 'anthropic',
     label: 'Anthropic (Haiku)',
     apiType: 'anthropic',
