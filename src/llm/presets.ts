@@ -91,3 +91,26 @@ export function healConnection(conn: Connection | null): Connection | null {
   const replacement = RETIRED_MODELS[conn.model]
   return replacement ? { ...conn, model: replacement } : conn
 }
+
+/**
+ * Currently-live OpenRouter free models, in preference order. Free models get
+ * rate-limited (429) constantly and each routes to a different upstream, so if
+ * the chosen one is throttled we transparently try the next. Best-effort — dead
+ * entries just 404 and get skipped.
+ */
+export const FREE_FALLBACK_MODELS: string[] = [
+  'qwen/qwen3-next-80b-a3b-instruct:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'google/gemma-4-31b-it:free',
+]
+
+/** The ordered list of models to try for a call: the chosen model first, then —
+ *  for an OpenRouter free model only — the other free models as fallbacks. */
+export function modelChain(conn: Connection): string[] {
+  const primary = conn.model
+  const isOpenRouter = conn.presetId === 'openrouter' || /openrouter\.ai/.test(conn.baseUrl)
+  if (isOpenRouter && primary.endsWith(':free')) {
+    return [primary, ...FREE_FALLBACK_MODELS.filter((m) => m !== primary)]
+  }
+  return [primary]
+}

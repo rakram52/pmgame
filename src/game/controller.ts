@@ -5,6 +5,7 @@ import { extractDelta, type DeltaExtraction } from '../state/delta'
 import { applyDelta } from '../state/reducer'
 import type { Connection } from '../llm/types'
 import { callModel } from '../llm/client'
+import { describeLlmError } from '../llm/errors'
 
 /**
  * Glue between the pure engine/reducer and the UI.
@@ -72,7 +73,7 @@ export async function runTurnAuto(state: GameState, conn: Connection, signal?: A
     try {
       raw = await callModel(conn, prompt, signal)
     } catch (e) {
-      return { ok: false, error: (e as Error).message, prompt: chatPrompt }
+      return { ok: false, error: describeLlmError(e), prompt: chatPrompt }
     }
     const ext = extractDelta(raw)
     if (ext.ok) {

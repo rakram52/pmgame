@@ -1,5 +1,6 @@
 import type { Connection } from './types'
 import { DELTA_JSON_SCHEMA } from './deltaJsonSchema'
+import { LlmHttpError } from './errors'
 
 /** POST to the Anthropic Messages API directly from the browser (allowed via
  *  the dangerous-direct-browser-access header for bring-your-own-key apps).
@@ -31,7 +32,7 @@ export async function callAnthropic(conn: Connection, prompt: string, signal?: A
     }),
   })
   if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}: ${(await safeText(res)).slice(0, 300)}`)
+    throw new LlmHttpError(res.status, `${res.status} ${res.statusText || ''}: ${(await safeText(res)).slice(0, 300)}`.trim())
   }
   const data = (await res.json()) as any
   const toolBlock = Array.isArray(data?.content) ? data.content.find((b: any) => b?.type === 'tool_use') : null

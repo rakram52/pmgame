@@ -1,4 +1,5 @@
 import type { Connection } from './types'
+import { LlmHttpError } from './errors'
 
 /** POST to any OpenAI-compatible /chat/completions endpoint (OpenRouter,
  *  DeepSeek, Groq, Ollama, custom). Requests a JSON object so the whole reply
@@ -23,9 +24,15 @@ export async function callOpenAI(conn: Connection, prompt: string, signal?: Abor
     }),
   })
   if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}: ${(await safeText(res)).slice(0, 300)}`)
+    throw new LlmHttpError(res.status, `${res.status} ${res.statusText || ''}: ${(await safeText(res)).slice(0, 300)}`.trim())
   }
   const data = (await res.json()) as any
+  // OpenRouter can return HTTP 200 with a provider error in the body (e.g. an
+  // upstream 429). Surface it as the real status so retry/fallback can act.
+  if (data?.error) {
+    const code = typeof data.error?.code === 'number' ? data.error.code : 502
+    throw new LlmHttpError(code, `${code}: ${JSON.stringify(data.error).slice(0, 300)}`)
+  }
   const content = data?.choices?.[0]?.message?.content
   if (typeof content !== 'string' || !content.trim()) {
     throw new Error('Model returned no content.')
