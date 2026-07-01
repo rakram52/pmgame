@@ -46,6 +46,26 @@ describe('openai adapter', () => {
     vi.stubGlobal('fetch', vi.fn(async () => fakeResponse({ error: { message: 'rate-limited upstream', code: 429 } })))
     await expect(callOpenAI(oaConn, 'p')).rejects.toMatchObject({ status: 429 })
   })
+
+  it('only sends OpenRouter attribution headers to OpenRouter', async () => {
+    const reply = fakeResponse({ choices: [{ message: { content: '{"options":{"A":"a","B":"b","C":"c"}}' } }] })
+
+    const orFetch = vi.fn(async () => reply)
+    vi.stubGlobal('fetch', orFetch)
+    await callOpenAI(oaConn, 'p') // oaConn.baseUrl is openrouter.ai
+    const [, orInit] = orFetch.mock.calls[0] as unknown as [string, RequestInit]
+    expect(orInit.headers).toMatchObject({ 'X-Title': 'The Sovereign Game' })
+
+    const geminiConn: Connection = { ...oaConn, presetId: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash' }
+    const gFetch = vi.fn(async () => reply)
+    vi.stubGlobal('fetch', gFetch)
+    await callOpenAI(geminiConn, 'p')
+    const [, gInit] = gFetch.mock.calls[0] as unknown as [string, RequestInit]
+    const gHeaders = gInit.headers as Record<string, string>
+    expect(gHeaders['HTTP-Referer']).toBeUndefined()
+    expect(gHeaders['X-Title']).toBeUndefined()
+    expect(gHeaders.Authorization).toBe('Bearer sk-test')
+  })
 })
 
 describe('modelChain', () => {

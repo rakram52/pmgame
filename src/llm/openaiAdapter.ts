@@ -6,16 +6,20 @@ import { LlmHttpError } from './errors'
  *  is the delta (with the narrative in `scene`). Returns the raw assistant text. */
 export async function callOpenAI(conn: Connection, prompt: string, signal?: AbortSignal): Promise<string> {
   const url = joinUrl(conn.baseUrl, '/chat/completions')
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${conn.apiKey}`,
+  }
+  // HTTP-Referer / X-Title are OpenRouter's attribution headers — only send them
+  // there, so no app-identifying breadcrumb leaks to Google/DeepSeek/etc.
+  if (conn.presetId === 'openrouter' || /openrouter\.ai/.test(conn.baseUrl)) {
+    headers['HTTP-Referer'] = 'https://rakram52.github.io/pmgame/'
+    headers['X-Title'] = 'The Sovereign Game'
+  }
   const res = await fetch(url, {
     method: 'POST',
     signal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${conn.apiKey}`,
-      // OpenRouter asks for these; harmless elsewhere.
-      'HTTP-Referer': 'https://rakram52.github.io/pmgame/',
-      'X-Title': 'The Sovereign Game',
-    },
+    headers,
     body: JSON.stringify({
       model: conn.model,
       messages: [{ role: 'user', content: prompt }],
