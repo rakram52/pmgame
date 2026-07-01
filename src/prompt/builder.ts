@@ -146,14 +146,16 @@ export function buildTurnPrompt(s: GameState, mode: PromptMode = 'chat'): string
     sections.push('', '━━━ THIS WEEK IS A SET PIECE ━━━', setpiece)
   }
 
-  sections.push('', '━━━ THE PM ━━━')
   if (opening) {
+    sections.push('', '━━━ THE PM ━━━')
     sections.push(
       `This is the OPENING scene (Week ${s.calendar.week}, ${s.calendar.dateISO}) — curtain-up on this premiership. Establish the world in full and with atmosphere: the mood inside Number 10 on the first real morning, the in-tray already on fire (the live streams, the ${s.calendar.daysToLocals} days to the locals, Reform's lead, the markets), the Cabinet the PM has just appointed and the tensions baked into those choices, and the sheer weight of the office. Bring two or three of the key players on by name and let their agendas show. Then land the first genuine decision with three distinct options. No action has been taken yet — spend the words, set the stage richly.`,
     )
   } else {
+    sections.push('', '━━━ THE PM HAS INSTRUCTED YOU — ENACT IT ━━━')
     sections.push(
-      `The PM's decision this week: ${s.chosenAction}\n\nNarrate the FALLOUT of this choice with real consequence — who reacts, who gains, who is exposed, what the papers make of it — honouring the engine roll above. Then build the next week's scene to the same standard: stakes, continuity, characters, a fresh decision.`,
+      `The PM's instruction this week, in their own words:\n\n    “${s.chosenAction}”\n\n` +
+        `This is BINDING and it is the SPINE of the scene. OPEN by showing it actually carried out — the meeting convened and what is said around the table, the order given and who scrambles to obey, the summons answered, the statement delivered — and its immediate consequences, honouring the engine roll above (don't override the roll's success/failure). Name who reacts, who gains, who is exposed, what the papers make of it. Do NOT ignore, water down, reinterpret, or silently skip what the PM asked for; if it's unwise, show it going wrong, but show it happening. ONLY THEN move the week on and present the next decision, to the same standard: stakes, continuity, characters, three fresh options.`,
     )
   }
 

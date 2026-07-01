@@ -82,6 +82,9 @@ export function Play({ game, connection, onCommit, onNewGame }: { game: GameStat
   async function doCopy() {
     const ok = await copyText(working.lastPrompt)
     setCopied(ok)
+    // If the clipboard write was blocked, reveal the prompt so it can be copied
+    // by hand rather than silently pasting stale text into the chat.
+    if (!ok) setShowPrompt(true)
     setTimeout(() => setCopied(false), 1800)
   }
 
