@@ -240,7 +240,9 @@ export function applyDelta(prev: GameState, delta: TurnDelta, prose: string): Re
   if (wasDecision) s.turnIndex += 1
 
   // 13. Clear the per-turn surface. A queued set-piece is consumed by the turn
-  //     it fired on, so clear it now.
+  //     it fired on, so clear it now. Remember the action that drove this scene
+  //     so the app can echo it back to the player.
+  if (wasDecision) s.lastAction = s.chosenAction.trim()
   s.pendingRolls = null
   s.pendingInjections = []
   s.chosenAction = ''

@@ -171,6 +171,12 @@ export function Play({ game, connection, onCommit, onNewGame }: { game: GameStat
       {game.currentScene ? (
         <>
           <SetpieceBanner game={game} />
+          {game.lastAction && (
+            <div class="last-move">
+              <span class="last-move-label">Your move</span>
+              <span class="last-move-text">“{game.lastAction}”</span>
+            </div>
+          )}
           <div class={game.turnKind === 'standard' ? 'scene' : `scene sp-scene sp-scene-${game.turnKind}`}>
             <RichText text={game.currentScene} />
           </div>

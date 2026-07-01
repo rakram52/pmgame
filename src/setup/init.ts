@@ -135,6 +135,7 @@ export function initGameState(sel: SetupSelections, seedOverride?: string): Game
     pendingInjections: [],
     chosenAction: '',
     chosenRisk: null,
+    lastAction: '',
     lastPrompt: '',
     lastRawReply: '',
     status: 'stable',

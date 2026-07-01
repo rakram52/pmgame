@@ -21,6 +21,7 @@ describe('migrations (FR-16 — old saves keep loading)', () => {
     delete full.setpieceContext
     delete full.statHistory
     delete full.ending
+    delete full.lastAction
     full.schemaVersion = 1
 
     const migrated = migrate(full)
@@ -31,6 +32,7 @@ describe('migrations (FR-16 — old saves keep loading)', () => {
     expect(migrated.setpieceContext).toBe('')
     expect(migrated.statHistory).toEqual([])
     expect(migrated.ending).toBeNull()
+    expect(migrated.lastAction).toBe('')
   })
 
   it('refuses a save from a newer version than supported', () => {

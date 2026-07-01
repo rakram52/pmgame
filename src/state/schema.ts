@@ -7,7 +7,7 @@ import { z } from 'zod'
  * delta; code owns and validates everything here.
  */
 
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 // ---------------------------------------------------------------------------
 // Small enums / leaf schemas
@@ -347,6 +347,9 @@ export const GameStateSchema = z.object({
   pendingInjections: z.array(z.string()).default([]),
   chosenAction: z.string().default(''),
   chosenRisk: RiskSchema.nullable().default(null),
+  /** The decision/instruction that produced the CURRENT scene, kept so the app
+   *  can echo "your move" back to the player (chosenAction is cleared on commit). */
+  lastAction: z.string().default(''),
   lastPrompt: z.string().default(''),
   lastRawReply: z.string().default(''),
   status: StatusSchema.default('stable'),

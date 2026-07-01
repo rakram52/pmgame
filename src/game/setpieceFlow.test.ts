@@ -59,6 +59,18 @@ describe('set-piece flow', () => {
     }
   })
 
+  it('remembers the decision that drove the scene, for the "your move" echo', () => {
+    const instruction = 'Summon the Chancellor; I want ECHR-compliant options by Friday.'
+    const acted = chooseAction(midGame(), instruction, 'moderate')
+    expect(acted.lastPrompt).toContain('ECHR-compliant options')
+    const r = applyReply(acted, reply(', "keyHistoryAppend": "The PM tasked the Chancellor."'))
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.state.lastAction).toBe(instruction)
+      expect(r.state.chosenAction).toBe('') // cleared, but remembered in lastAction
+    }
+  })
+
   it('stat history is appended (capped) on every commit (US-301)', () => {
     const acted = chooseAction(midGame(), 'A choice', 'moderate')
     const r = applyReply(acted, reply(', "stateBlock": { "approval": -2 }'))
