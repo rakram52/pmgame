@@ -43,8 +43,6 @@ function DoctrineSection({
   onPick: (key: string) => void
   onDirective: (text: string) => void
 }) {
-  const [open, setOpen] = useState(directive.trim().length > 0)
-  const has = directive.trim().length > 0
   return (
     <div class="setup-office">
       <h3>{dial.title}</h3>
@@ -62,20 +60,17 @@ function DoctrineSection({
           </button>
         ))}
       </div>
-      <div class="directive">
-        <button class="link directive-toggle" onClick={() => setOpen((v) => !v)}>
-          {has ? '✎ Your standing instruction' : open ? 'Hide instruction' : '+ Add your own instruction'}
-          {has && !open && <span class="directive-dot" aria-hidden="true" />}
-        </button>
-        {open && (
-          <textarea
-            class="directive-input"
-            placeholder="Your binding directive to officials on this brief — e.g. “No ECHR derogation without Cabinet sign-off; lead with returns deals, not detention.”"
-            value={directive}
-            onInput={(e) => onDirective((e.target as HTMLTextAreaElement).value)}
-          />
-        )}
-      </div>
+      <label class="directive">
+        <span class="directive-label">
+          Your standing instruction <em>(optional)</em>
+        </span>
+        <textarea
+          class="directive-input"
+          placeholder="Your binding directive to officials on this brief — e.g. “No ECHR derogation without Cabinet sign-off; lead with returns deals, not detention.”"
+          value={directive}
+          onInput={(e) => onDirective((e.target as HTMLTextAreaElement).value)}
+        />
+      </label>
     </div>
   )
 }

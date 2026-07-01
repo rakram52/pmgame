@@ -74,3 +74,20 @@ export const PRESETS: Preset[] = [
 export function presetById(id: string): Preset | undefined {
   return PRESETS.find((p) => p.id === id)
 }
+
+/**
+ * OpenRouter retires free model slugs without notice (a saved connection then
+ * 404s on one-tap). Map any known-dead slug to a currently-live replacement so
+ * existing connections self-heal on load. Keep this list current.
+ */
+export const RETIRED_MODELS: Record<string, string> = {
+  'deepseek/deepseek-chat-v3-0324:free': 'qwen/qwen3-next-80b-a3b-instruct:free',
+}
+
+/** Swap a retired model id for its replacement. Returns a NEW object only when
+ *  something changed, so callers can cheaply detect a heal by identity. Pure. */
+export function healConnection(conn: Connection | null): Connection | null {
+  if (!conn) return conn
+  const replacement = RETIRED_MODELS[conn.model]
+  return replacement ? { ...conn, model: replacement } : conn
+}

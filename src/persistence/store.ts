@@ -2,6 +2,7 @@ import { get, set, del, keys } from 'idb-keyval'
 import type { GameState } from '../state/schema'
 import { migrate } from '../state/migrations'
 import type { Connection } from '../llm/types'
+import { healConnection } from '../llm/presets'
 
 /**
  * Local-first durable persistence. IndexedDB is the primary store; export/import
@@ -78,7 +79,11 @@ export async function saveConnection(conn: Connection): Promise<void> {
 }
 
 export async function loadConnection(): Promise<Connection | null> {
-  return (await get<Connection>(CONNECTION_KEY)) ?? null
+  const stored = (await get<Connection>(CONNECTION_KEY)) ?? null
+  const healed = healConnection(stored)
+  // Persist the heal so it survives, and so Settings shows the live model.
+  if (healed && healed !== stored) await set(CONNECTION_KEY, healed)
+  return healed
 }
 
 export async function clearConnection(): Promise<void> {
