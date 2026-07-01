@@ -3,6 +3,7 @@ import { DOCTRINE_KEYS, THREAT_LABELS, TERMINAL_LOOP_STATUSES } from '../state/s
 import { RULES_CORE, OUTPUT_CONTRACT_CHAT, OUTPUT_CONTRACT_API } from './systemRules'
 import { FEW_SHOT } from './fewshot'
 import { setpieceSection } from './setpieces'
+import { SETTLING_WEEKS } from '../engine/pacing'
 
 export type PromptMode = 'chat' | 'api'
 
@@ -156,6 +157,14 @@ export function buildTurnPrompt(s: GameState, mode: PromptMode = 'chat'): string
     sections.push(
       `The PM's instruction this week, in their own words:\n\n    “${s.chosenAction}”\n\n` +
         `This is BINDING and it is the SPINE of the scene. OPEN by showing it actually carried out — the meeting convened and what is said around the table, the order given and who scrambles to obey, the summons answered, the statement delivered — and its immediate consequences, honouring the engine roll above (don't override the roll's success/failure). Name who reacts, who gains, who is exposed, what the papers make of it. Do NOT ignore, water down, reinterpret, or silently skip what the PM asked for; if it's unwise, show it going wrong, but show it happening. ONLY THEN move the week on and present the next decision, to the same standard: stakes, continuity, characters, three fresh options.`,
+    )
+  }
+
+  // Settling-in steer: keep the opening weeks about direction-setting, not crises.
+  if (s.calendar.week <= SETTLING_WEEKS) {
+    sections.push(
+      '',
+      `SETTLING-IN (Week ${s.calendar.week}): this is early. Do NOT manufacture an emergency or a scandal yet — the world's crises ramp up from Week ${SETTLING_WEEKS + 1}. Keep this week about the PM setting DIRECTION: establishing priorities, choosing what the premiership is about, and tasking government (commission reviews, demand reports, set the grid). Honour every tasking the PM gives by opening it as an open loop. The decision you present should be strategic — a direction to set or a priority to weigh — not a fire to fight.`,
     )
   }
 

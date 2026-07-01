@@ -1,6 +1,7 @@
 import type { GameState, CastMember, DoctrineKey, PendingConsequence, ForeignCapital, Stream, DoctrineDial } from '../state/schema'
 import { GameStateSchema, DOCTRINE_KEYS } from '../state/schema'
 import { Rng, freshSeed } from '../engine/rng'
+import { EARLIEST_CONSEQUENCE_WEEK } from '../engine/pacing'
 import { GREAT_OFFICES, INNER_MACHINE, SECOND_TIER_THEMES, DOCTRINE_DIALS } from './content'
 
 export interface SetupSelections {
@@ -67,7 +68,9 @@ export function initGameState(sel: SetupSelections, seedOverride?: string): Game
     const chosenKey = sel.doctrine[dial.key] ?? 'B'
     const opt = dial.options.find((o) => o.key === chosenKey) ?? dial.options[1]
     const consId = nid('cons')
-    const dueWeek = rng.int(1, 10)
+    // Spread the locked consequences across the early premiership, but never in
+    // the settling-in weeks — the world ramps up, it doesn't ambush week 1.
+    const dueWeek = rng.int(EARLIEST_CONSEQUENCE_WEEK, 14)
     const directive = (sel.doctrineDirectives?.[dial.key] ?? '').trim()
     pendingConsequences.push({ id: consId, source: `doctrine:${dial.key}:${chosenKey}`, description: opt.consequence, triggerCondition: `by week ${dueWeek}`, dueWeek, fired: false })
     doctrine[dial.key] = { value: chosenKey, summary: opt.label, directive, lockedConsequenceId: consId }

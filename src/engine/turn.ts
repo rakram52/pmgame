@@ -4,6 +4,7 @@ import { resolveAction } from './resolve'
 import { rollWorldVariance, maybeRollEvent } from './events'
 import { scheduleTurnKind, summitFocusCapital } from './schedule'
 import { computeElectionResult } from './setpieceLogic'
+import { SETTLING_WEEKS } from './pacing'
 
 export { scheduleTurnKind } from './schedule'
 
@@ -42,19 +43,27 @@ export function prepareTurn(input: GameState): GameState {
     injections.push(`RANDOM EVENT (${ev.title}): ${ev.directive}`)
   }
 
+  // Settling-in grace: hold back pre-planted consequences and secret exposures
+  // in the opening weeks so the PM can set direction before the world bites.
+  const pastSettling = state.calendar.week > SETTLING_WEEKS
+
   // 4. Scheduled doctrine consequences whose week has arrived.
-  for (const pc of state.pendingConsequences) {
-    if (!pc.fired && pc.dueWeek != null && pc.dueWeek <= state.calendar.week) {
-      pc.fired = true
-      injections.push(`SCHEDULED CONSEQUENCE NOW IN PLAY: ${pc.description}`)
+  if (pastSettling) {
+    for (const pc of state.pendingConsequences) {
+      if (!pc.fired && pc.dueWeek != null && pc.dueWeek <= state.calendar.week) {
+        pc.fired = true
+        injections.push(`SCHEDULED CONSEQUENCE NOW IN PLAY: ${pc.description}`)
+      }
     }
   }
 
   // 5. Buried-but-live: each untriggered secret gets a per-turn exposure roll.
-  for (const secret of state.buriedButLive) {
-    if (!secret.triggered && rng.d(100) <= secret.exposureRisk) {
-      secret.triggered = true
-      injections.push(`A BURIED STORY NOW SURFACES: ${secret.title} — ${secret.detail}`)
+  if (pastSettling) {
+    for (const secret of state.buriedButLive) {
+      if (!secret.triggered && rng.d(100) <= secret.exposureRisk) {
+        secret.triggered = true
+        injections.push(`A BURIED STORY NOW SURFACES: ${secret.title} — ${secret.detail}`)
+      }
     }
   }
 
