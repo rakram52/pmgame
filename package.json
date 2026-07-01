@@ -1,0 +1,27 @@
+{
+  "name": "pmgame",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The Sovereign Game — a robust, drift-proof state engine for a UK-PM political-drama sim narrated by your Claude subscription via copy-paste relay.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.2.1",
+    "preact": "^10.24.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.1",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.7",
+    "vite-plugin-pwa": "^0.21.1",
+    "vitest": "^2.1.8"
+  }
+}
