@@ -6,6 +6,7 @@ import { chooseAction, applyReply, prepareAndBuild, runTurnAuto, type ApplyResul
 import { buildRepairPrompt } from '../prompt/repair'
 import { copyText, readClipboard, chatUrl } from './clipboard'
 import { RichText } from './richtext'
+import { Gauge, ThreatPips, approvalTone, threatTone } from './meters'
 
 type Failure = Extract<ApplyResult, { ok: false }>['failure']
 
@@ -105,17 +106,43 @@ export function Play({ game, connection, onCommit }: { game: GameState; connecti
   const modelName = connection?.model || (game.houseRules.modelProfile === 'chatgpt' ? 'ChatGPT' : 'Claude')
 
   return (
-    <div class="play screen-scroll">
-      <div class="wk">
-        <span class="wk-date">
-          Week {game.calendar.week} · {formatDate(game.calendar.dateISO)}
-        </span>
-        <span class={`pill status-${game.status}`}>{game.status}</span>
-      </div>
-      <div class="wk-sub">
-        {game.calendar.daysToLocals} days to locals · Approval {game.stateBlock.approval}% · Reform {game.stateBlock.reform}% · Threat {threat}
-      </div>
+    <div class="play">
+      <header class="play-hud">
+        <div class="wk">
+          <span class="wk-date">
+            Week {game.calendar.week} · {formatDate(game.calendar.dateISO)}
+          </span>
+          <span class={`pill status-${game.status}`}>{game.status}</span>
+        </div>
+        <div class="hud-meters">
+          <div class="hud-meter">
+            <div class="hud-meter-top">
+              <span class="hud-label">Approval</span>
+              <span class="hud-num">{game.stateBlock.approval}%</span>
+            </div>
+            <Gauge value={game.stateBlock.approval} tone={approvalTone(game.stateBlock.approval)} />
+          </div>
+          <div class="hud-meter">
+            <div class="hud-meter-top">
+              <span class="hud-label">Reform UK</span>
+              <span class="hud-num">{game.stateBlock.reform}%</span>
+            </div>
+            <Gauge value={game.stateBlock.reform} max={50} tone={threatTone(game.stateBlock.reform, 26, 32)} />
+          </div>
+          <div class="hud-meter">
+            <div class="hud-meter-top">
+              <span class="hud-label">Threat</span>
+              <span class="hud-num">{threat}</span>
+            </div>
+            <ThreatPips level={game.stateBlock.threat} />
+          </div>
+        </div>
+        <div class="wk-sub">
+          {game.calendar.daysToLocals} days to locals · Capital {game.stateBlock.capital}/100 · Whip {game.stateBlock.whip >= 0 ? `+${game.stateBlock.whip}` : game.stateBlock.whip}
+        </div>
+      </header>
 
+      <div class="play-body">
       {game.status === 'lost' && (
         <div class="lost-banner">The government has fallen. Review the dossier, or start anew from the menu.</div>
       )}
@@ -254,6 +281,7 @@ export function Play({ game, connection, onCommit }: { game: GameState; connecti
           </div>
         )
       )}
+      </div>
     </div>
   )
 }

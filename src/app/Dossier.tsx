@@ -1,29 +1,119 @@
-import type { GameState } from '../state/schema'
+import type { GameState, CastMember, ForeignCapital, OpenLoop } from '../state/schema'
 import { TERMINAL_LOOP_STATUSES } from '../state/schema'
 import { isLoopDue } from '../prompt/builder'
+import { loopsForActor, loopsForCapital, resolveLoopActor, CAPITAL_LEADERS } from '../game/links'
+import { BipolarBar, signed } from './meters'
+
+/** A compact list of the loops an actor is carrying, with due flags. */
+function TiedLoops({ label, loops, week }: { label: string; loops: OpenLoop[]; week: number }) {
+  if (loops.length === 0) return null
+  return (
+    <div class="tied">
+      <span class="tied-label">{label}</span>
+      <ul class="tied-list">
+        {loops.map((l) => (
+          <li key={l.id} class={isLoopDue(l, week) ? 'due' : ''}>
+            {l.title}
+            {isLoopDue(l, week) && <span class="due-badge">DUE</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function standingWord(s: number): string {
+  if (s <= -40) return 'plotting'
+  if (s < 0) return 'restive'
+  if (s < 20) return 'correct'
+  if (s < 55) return 'onside'
+  return 'loyal'
+}
+
+function CastCard({ m, loops, week }: { m: CastMember; loops: OpenLoop[]; week: number }) {
+  const tied = loopsForActor(loops, m)
+  const tone = m.standing < 0 ? 'neg' : m.standing > 30 ? 'pos' : ''
+  return (
+    <li class="person">
+      <div class="person-head">
+        <span class={`fdot f-${m.faction}`} />
+        <span class="person-name">{m.name}</span>
+        <span class={`standing-tag ${tone}`}>{signed(m.standing)}</span>
+      </div>
+      <div class="person-role">
+        {m.role} · <span class="person-mood">{standingWord(m.standing)}</span>
+      </div>
+      <BipolarBar value={m.standing} />
+      {m.agenda && <div class="person-agenda">“{m.agenda}”</div>}
+      <TiedLoops label="Carrying" loops={tied} week={week} />
+    </li>
+  )
+}
+
+function CapitalCard({ c, loops, week }: { c: ForeignCapital; loops: OpenLoop[]; week: number }) {
+  const leader = CAPITAL_LEADERS[c.name]
+  const tied = loopsForCapital(loops, c)
+  const tone = c.read < 0 ? 'neg' : 'pos'
+  return (
+    <li class="person">
+      <div class="person-head">
+        <span class="person-name">{c.name}</span>
+        {leader && <span class="cap-leader">{leader}</span>}
+        <span class={`standing-tag ${tone}`}>{signed(c.read)}</span>
+      </div>
+      <BipolarBar value={c.read} />
+      {c.posture && <div class="person-agenda plain">{c.posture}</div>}
+      <TiedLoops label="In play" loops={tied} week={week} />
+    </li>
+  )
+}
 
 export function Dossier({ game }: { game: GameState }) {
+  const week = game.calendar.week
   const liveLoops = game.openLoops.filter((l) => !TERMINAL_LOOP_STATUSES.includes(l.status))
   const doneLoops = game.openLoops.filter((l) => TERMINAL_LOOP_STATUSES.includes(l.status))
   const secrets = game.buriedButLive.filter((s) => s.triggered)
+  const dueCount = liveLoops.filter((l) => isLoopDue(l, week)).length
 
   return (
     <div class="dossier screen-scroll">
-      <h3 class="sec">Open loops</h3>
+      <div class="sec-head">
+        <h3 class="sec">Open loops</h3>
+        {dueCount > 0 && <span class="sec-count due">{dueCount} due</span>}
+        {dueCount === 0 && liveLoops.length > 0 && <span class="sec-count">{liveLoops.length}</span>}
+      </div>
       {liveLoops.length === 0 && <p class="empty">No open taskings. Commission something in a scene and it'll be tracked here.</p>}
       <ul class="loops">
-        {liveLoops.map((l) => (
-          <li key={l.id} class={isLoopDue(l, game.calendar.week) ? 'loop due' : 'loop'}>
-            <div class="loop-title">
-              {l.who && <span class="loop-who">{l.who}</span>} {l.title}
-              {isLoopDue(l, game.calendar.week) && <span class="due-badge">DUE</span>}
-            </div>
-            <div class="loop-meta">
-              due W{l.dueWeek} · {l.status}
-            </div>
-            {l.detail && <div class="loop-detail">{l.detail}</div>}
-          </li>
-        ))}
+        {liveLoops.map((l) => {
+          const actor = resolveLoopActor(l, game.cabinet, game.standingCast, game.foreignCapitals)
+          const due = isLoopDue(l, week)
+          return (
+            <li key={l.id} class={due ? 'loop due' : 'loop'}>
+              <div class="loop-title">
+                {l.title}
+                {due && <span class="due-badge">DUE</span>}
+              </div>
+              <div class="loop-owner">
+                {actor?.kind === 'cast' ? (
+                  <>
+                    <span class={`fdot f-${actor.member.faction}`} />
+                    <span class="owner-name">{actor.member.name}</span>
+                    <span class="owner-role">{actor.member.role}</span>
+                  </>
+                ) : actor?.kind === 'capital' ? (
+                  <>
+                    <span class="owner-name">{actor.leader ?? actor.capital.name}</span>
+                    <span class="owner-role">{actor.capital.name}</span>
+                  </>
+                ) : (
+                  <span class="owner-name">{l.who || 'Number 10'}</span>
+                )}
+                <span class="owner-due">· due W{l.dueWeek} · {l.status}</span>
+              </div>
+              {l.detail && <div class="loop-detail">{l.detail}</div>}
+            </li>
+          )
+        })}
       </ul>
 
       <h3 class="sec">Slow-moving streams</h3>
@@ -36,25 +126,28 @@ export function Dossier({ game }: { game: GameState }) {
         ))}
       </ul>
 
-      <h3 class="sec">Cabinet &amp; standing cast</h3>
-      <ul class="cast">
-        {[...game.cabinet, ...game.standingCast].map((m) => (
-          <li key={m.id}>
-            <span class="cast-name">{m.name}</span>
-            <span class="cast-role">{m.role}</span>
-            <span class={`standing ${m.standing < 0 ? 'neg' : m.standing > 30 ? 'pos' : ''}`}>{m.standing >= 0 ? `+${m.standing}` : m.standing}</span>
-          </li>
+      <h3 class="sec">Cabinet</h3>
+      <ul class="people">
+        {game.cabinet.map((m) => (
+          <CastCard key={m.id} m={m} loops={liveLoops} week={week} />
         ))}
       </ul>
 
+      {game.standingCast.length > 0 && (
+        <>
+          <h3 class="sec">Officials &amp; standing cast</h3>
+          <ul class="people">
+            {game.standingCast.map((m) => (
+              <CastCard key={m.id} m={m} loops={liveLoops} week={week} />
+            ))}
+          </ul>
+        </>
+      )}
+
       <h3 class="sec">Foreign capitals</h3>
-      <ul class="capitals">
+      <ul class="people">
         {game.foreignCapitals.map((c) => (
-          <li key={c.id}>
-            <span class="cap-name">{c.name}</span>
-            <span class={`cap-read ${c.read < 0 ? 'neg' : 'pos'}`}>{c.read >= 0 ? `+${c.read}` : c.read}</span>
-            <span class="cap-posture">{c.posture}</span>
-          </li>
+          <CapitalCard key={c.id} c={c} loops={liveLoops} week={week} />
         ))}
       </ul>
 

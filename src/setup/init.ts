@@ -11,6 +11,8 @@ export interface SetupSelections {
   secondTierTheme: string
   /** doctrine dial key -> option key ('A' | 'B' | 'C') */
   doctrine: Record<string, string>
+  /** doctrine dial key -> the PM's own free-text instruction for that area (optional) */
+  doctrineDirectives?: Record<string, string>
   difficultyBias?: 'easy' | 'standard' | 'hard'
   modelProfile?: 'claude' | 'chatgpt' | 'other'
 }
@@ -66,8 +68,9 @@ export function initGameState(sel: SetupSelections, seedOverride?: string): Game
     const opt = dial.options.find((o) => o.key === chosenKey) ?? dial.options[1]
     const consId = nid('cons')
     const dueWeek = rng.int(1, 10)
+    const directive = (sel.doctrineDirectives?.[dial.key] ?? '').trim()
     pendingConsequences.push({ id: consId, source: `doctrine:${dial.key}:${chosenKey}`, description: opt.consequence, triggerCondition: `by week ${dueWeek}`, dueWeek, fired: false })
-    doctrine[dial.key] = { value: chosenKey, summary: opt.label, lockedConsequenceId: consId }
+    doctrine[dial.key] = { value: chosenKey, summary: opt.label, directive, lockedConsequenceId: consId }
   }
 
   // --- Opening world variance (d6) ---

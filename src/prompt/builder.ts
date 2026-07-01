@@ -41,6 +41,8 @@ export function serializeSnapshot(s: GameState): string {
   for (const k of DOCTRINE_KEYS) {
     const d = s.doctrine[k]
     lines.push(`  ${DOCTRINE_LABELS[k]}: ${d.value}${d.summary ? ` — ${d.summary}` : ''}`)
+    // The PM's standing instruction outranks the preset framing — surface it plainly.
+    if (d.directive) lines.push(`      ↳ PM directive: ${d.directive}`)
   }
 
   if (s.cabinet.length) {

@@ -20,9 +20,9 @@ export const PRESETS: Preset[] = [
     label: 'OpenRouter (free) ★',
     apiType: 'openai',
     baseUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'deepseek/deepseek-chat-v3-0324:free',
+    defaultModel: 'qwen/qwen3-next-80b-a3b-instruct:free',
     keyUrl: 'https://openrouter.ai/keys',
-    note: 'Free open-source models. Needs a free OpenRouter key (no card). Models change — edit the model id if one stops working.',
+    note: 'Free open-source models. Needs a free OpenRouter key (no card). Models change — edit the model id if one stops working (e.g. meta-llama/llama-3.3-70b-instruct:free).',
   },
   {
     id: 'anthropic',

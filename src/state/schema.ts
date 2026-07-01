@@ -171,6 +171,10 @@ export type DoctrineKey = (typeof DOCTRINE_KEYS)[number]
 export const DoctrineDialSchema = z.object({
   value: z.string(), // 'A' | 'B' | 'C' | custom label
   summary: z.string().default(''),
+  /** The PM's own standing instruction for this policy area, set at government
+   *  formation. Handed to the narrator verbatim so it steers how the dial plays
+   *  out. Empty = follow the preset option only. */
+  directive: z.string().default(''),
   lockedConsequenceId: z.string().nullable().default(null),
 })
 export type DoctrineDial = z.infer<typeof DoctrineDialSchema>
