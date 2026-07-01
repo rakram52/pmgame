@@ -34,13 +34,27 @@ you can start a brand-new chat whenever you like and lose nothing.** Turn 300 is
 - **Schema validation at the boundary** — a malformed reply is caught and a one-tap *repair prompt*
   recovers it; your state is never half-applied.
 
-## How to play
+## Two ways to reach the model
 
+**Copy-paste relay (default, no account):**
 1. **New game** → run through Setup (cabinet + 9 doctrine dials).
 2. On the **Play** tab, tap an option (or type your own instruction).
 3. Tap **Copy turn prompt**, open your chat, paste, send.
 4. Copy the model's whole reply, come back, paste it in, tap **Apply**.
-5. The scene, the numbers and the dossier update. Repeat.
+
+**One-tap connection (Settings → Connection):** connect a model and the app calls it directly —
+tap an option and the next scene just appears, no copy-paste. Still a static PWA with **no backend**;
+your key is stored **only on this device** and is never included in exported saves. Presets:
+
+- **OpenRouter (free) ★** — free open-source models (Llama/Qwen/DeepSeek); needs a free key, £0.
+- **Anthropic (Haiku)** — best prose + rock-solid JSON via tool-use, ~£2 / 300 turns.
+- **DeepSeek / Groq** — very cheap hosted open-source (~70p / 300 turns).
+- **Ollama (local)** — run a model on your own machine (£0, fully private; needs a capable computer
+  + Tailscale to reach it from your phone, and `OLLAMA_ORIGINS=*`).
+- **Custom** — any OpenAI-compatible endpoint.
+
+On the API path the delta is self-healing (native structured output + automatic retry); if a call
+fails, the app falls back to copy-paste for that turn. Copy-paste always works with zero setup.
 
 Tip: you never need to keep the same chat open. Start a fresh one any time — the app is the memory.
 
@@ -72,12 +86,13 @@ src/
   engine/    rng.ts · resolve.ts · events.ts · turn.ts   — the deterministic dice
   prompt/    systemRules.ts · builder.ts · repair.ts · fewshot.ts
   setup/     content.ts · init.ts                          — character creation
+  llm/       presets.ts · openaiAdapter.ts · anthropicAdapter.ts · client.ts   — one-tap connection
   persistence/store.ts                                     — IndexedDB + export/import
-  game/      controller.ts                                 — engine ⇄ UI glue
+  game/      controller.ts                                 — engine ⇄ UI glue (copy-paste + runTurnAuto)
   app/       Preact UI (Home, Setup, Play, Dossier, StatePanel, Settings)
 ```
 
-## Later, if you want zero copy-paste
+## Zero copy-paste
 
-Add an Anthropic API key and have the app call the model directly — the copy-paste relay disappears
-and turns become one tap. The whole state engine stays exactly as-is; only the transport changes.
+Implemented — see **Settings → Connection** above. The state engine is untouched; only the transport
+changes. Copy-paste remains the always-works fallback.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { GameState } from '../state/schema'
-import { loadLastActive, saveGame, deleteGame, setLastActive, downloadSave } from '../persistence/store'
+import type { Connection } from '../llm/types'
+import { loadLastActive, saveGame, deleteGame, setLastActive, downloadSave, loadConnection, saveConnection } from '../persistence/store'
 import { Home } from './Home'
 import { Setup } from './Setup'
 import { Play } from './Play'
@@ -18,8 +19,10 @@ export function App() {
   const [game, setGame] = useState<GameState | null>(null)
   const [screen, setScreen] = useState<Screen>('loading')
   const [tab, setTab] = useState<Tab>('play')
+  const [connection, setConnection] = useState<Connection | null>(null)
 
   useEffect(() => {
+    loadConnection().then(setConnection)
     loadLastActive().then((g) => {
       if (g) {
         setGame(g)
@@ -29,6 +32,11 @@ export function App() {
       }
     })
   }, [])
+
+  async function updateConnection(conn: Connection) {
+    await saveConnection(conn)
+    setConnection(conn)
+  }
 
   async function commit(next: GameState) {
     const prevTurn = game?.turnIndex ?? 0
@@ -70,10 +78,19 @@ export function App() {
   return (
     <div class="app">
       <main class="content">
-        {tab === 'play' && <Play game={game} onCommit={commit} />}
+        {tab === 'play' && <Play game={game} connection={connection} onCommit={commit} />}
         {tab === 'dossier' && <Dossier game={game} />}
         {tab === 'state' && <StatePanel game={game} />}
-        {tab === 'settings' && <Settings game={game} onCommit={commit} onNewGame={() => setScreen('setup')} onDelete={onDelete} />}
+        {tab === 'settings' && (
+          <Settings
+            game={game}
+            onCommit={commit}
+            onNewGame={() => setScreen('setup')}
+            onDelete={onDelete}
+            connection={connection}
+            onConnectionChange={updateConnection}
+          />
+        )}
       </main>
       <nav class="tabs">
         <button class={tab === 'play' ? 'on' : ''} onClick={() => setTab('play')}>

@@ -12,6 +12,9 @@ import { TurnOptionsSchema, OptionRisksSchema, FactionSchema, TrendSchema, LoopS
  */
 
 export const TurnDeltaSchema = z.object({
+  /** The narrative prose. REQUIRED on the API path (where the whole reply is one
+   *  JSON object); omitted on the copy-paste path (prose sits outside the block). */
+  scene: z.string().optional(),
   options: TurnOptionsSchema,
   /** Optional risk tag per option, declared BEFORE the player chooses (so it
    *  can't be gamed toward a desired outcome). Drives the honest d100. */
@@ -188,7 +191,15 @@ function findRawBlock(raw: string): string | null {
   while ((m = FENCE_RE.exec(raw)) !== null) {
     if (m[1].includes('"options"')) candidate = m[1]
   }
-  return candidate
+  if (candidate) return candidate
+  // Final fallback (API path): the whole reply is a bare JSON object.
+  const trimmed = raw.trim()
+  const start = trimmed.indexOf('{')
+  const end = trimmed.lastIndexOf('}')
+  if (start !== -1 && end > start && trimmed.includes('"options"')) {
+    return trimmed.slice(start, end + 1)
+  }
+  return null
 }
 
 /**

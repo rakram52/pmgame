@@ -15,7 +15,8 @@
   "dependencies": {
     "idb-keyval": "^6.2.1",
     "preact": "^10.24.3",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.1",

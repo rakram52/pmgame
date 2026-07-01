@@ -1,6 +1,7 @@
 import { get, set, del, keys } from 'idb-keyval'
 import type { GameState } from '../state/schema'
 import { migrate } from '../state/migrations'
+import type { Connection } from '../llm/types'
 
 /**
  * Local-first durable persistence. IndexedDB is the primary store; export/import
@@ -9,6 +10,7 @@ import { migrate } from '../state/migrations'
 
 const GAME_PREFIX = 'game:'
 const LAST_ACTIVE = 'lastActive'
+const CONNECTION_KEY = 'llmConnection'
 
 export interface GameSummary {
   gameId: string
@@ -67,6 +69,20 @@ export async function deleteGame(gameId: string): Promise<void> {
 
 export async function setLastActive(gameId: string): Promise<void> {
   await set(LAST_ACTIVE, gameId)
+}
+
+// --- LLM connection (device-local; NEVER part of an exported save) ----------
+
+export async function saveConnection(conn: Connection): Promise<void> {
+  await set(CONNECTION_KEY, conn)
+}
+
+export async function loadConnection(): Promise<Connection | null> {
+  return (await get<Connection>(CONNECTION_KEY)) ?? null
+}
+
+export async function clearConnection(): Promise<void> {
+  await del(CONNECTION_KEY)
 }
 
 // --- Export / import --------------------------------------------------------

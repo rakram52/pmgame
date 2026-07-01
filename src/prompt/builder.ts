@@ -1,7 +1,9 @@
 import type { GameState } from '../state/schema'
 import { DOCTRINE_KEYS, THREAT_LABELS, TERMINAL_LOOP_STATUSES } from '../state/schema'
-import { SYSTEM_RULES } from './systemRules'
+import { RULES_CORE, OUTPUT_CONTRACT_CHAT, OUTPUT_CONTRACT_API } from './systemRules'
 import { FEW_SHOT } from './fewshot'
+
+export type PromptMode = 'chat' | 'api'
 
 /** Is a loop live and due (its week has arrived and it isn't terminal)? */
 export function isLoopDue(loop: GameState['openLoops'][number], week: number): boolean {
@@ -110,10 +112,13 @@ function rollsBlock(s: GameState): string {
   return parts.join('\n')
 }
 
-/** Assemble the full copy-ready prompt for the current turn. */
-export function buildTurnPrompt(s: GameState): string {
+/** Assemble the full prompt for the current turn. `mode` selects the output
+ *  contract: 'chat' (prose + fenced <<<DELTA>>> block, for the copy-paste relay)
+ *  or 'api' (a single JSON object with the narrative in `scene`, for direct calls). */
+export function buildTurnPrompt(s: GameState, mode: PromptMode = 'chat'): string {
   const opening = !s.chosenAction.trim() && !s.options
-  const sections: string[] = [SYSTEM_RULES, '', '━━━ STATE SNAPSHOT ━━━', serializeSnapshot(s)]
+  const rules = `${RULES_CORE}\n\n${mode === 'api' ? OUTPUT_CONTRACT_API : OUTPUT_CONTRACT_CHAT}`
+  const sections: string[] = [rules, '', '━━━ STATE SNAPSHOT ━━━', serializeSnapshot(s)]
 
   const rolls = rollsBlock(s)
   if (rolls) {
@@ -142,9 +147,15 @@ export function buildTurnPrompt(s: GameState): string {
     sections.push(`The PM's decision this week: ${s.chosenAction}`)
   }
 
-  const includeFewShot = s.turnIndex <= 1 || s.houseRules.modelProfile === 'other'
+  // The few-shot teaches the fenced-block format, so it's chat-only.
+  const includeFewShot = mode === 'chat' && (s.turnIndex <= 1 || s.houseRules.modelProfile === 'other')
   if (includeFewShot) sections.push('', FEW_SHOT)
 
-  sections.push('', 'Now: write the scene, present three options, and emit the DELTA block.')
+  sections.push(
+    '',
+    mode === 'api'
+      ? 'Now: return the single JSON object — the scene (with three options written into it) plus any state changes.'
+      : 'Now: write the scene, present three options, and emit the DELTA block.',
+  )
   return sections.join('\n')
 }
