@@ -104,6 +104,10 @@ export function initGameState(sel: SetupSelections, seedOverride?: string): Game
     pmName: sel.pmName?.trim() || 'Prime Minister',
     turnIndex: 1,
     phase: 'play',
+    turnKind: 'standard',
+    queuedTurnKind: null,
+    setpieceHistory: [],
+    setpieceContext: '',
     rng: { seed, counter: rng.counter },
     calendar: { week: 1, dateISO: '2026-04-13', daysToLocals: 24 },
     doctrine: doctrine as GameState['doctrine'],
@@ -117,6 +121,7 @@ export function initGameState(sel: SetupSelections, seedOverride?: string): Game
       { id: nid('secret'), title: 'Defence brief indiscretion', detail: 'A minister was franker than they should have been on a hot mic during the Iran crisis. A recording exists.', exposureRisk: 8, triggered: false, plantedWeek: 1 },
     ],
     keyHistory: [{ week: 1, turnIndex: 1, summary: `Government formed. Doctrine locked. Opening posture: ${openingLabel}.` }],
+    statHistory: [],
     pendingConsequences,
     worldVariance: { openingRoll: vRoll, openingLabel },
     lastEventCategory: null,
@@ -133,6 +138,7 @@ export function initGameState(sel: SetupSelections, seedOverride?: string): Game
     lastPrompt: '',
     lastRawReply: '',
     status: 'stable',
+    ending: null,
   }
 
   // Validate through the schema so we never start from a malformed state.

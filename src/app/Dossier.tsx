@@ -3,6 +3,10 @@ import { TERMINAL_LOOP_STATUSES } from '../state/schema'
 import { isLoopDue } from '../prompt/builder'
 import { loopsForActor, loopsForCapital, resolveLoopActor, CAPITAL_LEADERS } from '../game/links'
 import { BipolarBar, signed } from './meters'
+import { TURN_KIND_META } from '../engine/turnKinds'
+import { SetpieceChip } from './setpiece'
+import { Timeline } from './progress'
+import { Portrait, castColor } from './portrait'
 
 /** A compact list of the loops an actor is carrying, with due flags. */
 function TiedLoops({ label, loops, week }: { label: string; loops: OpenLoop[]; week: number }) {
@@ -36,12 +40,17 @@ function CastCard({ m, loops, week }: { m: CastMember; loops: OpenLoop[]; week: 
   return (
     <li class="person">
       <div class="person-head">
-        <span class={`fdot f-${m.faction}`} />
-        <span class="person-name">{m.name}</span>
-        <span class={`standing-tag ${tone}`}>{signed(m.standing)}</span>
-      </div>
-      <div class="person-role">
-        {m.role} · <span class="person-mood">{standingWord(m.standing)}</span>
+        <Portrait seed={m.id + m.name} label={m.name} color={castColor(m.faction)} size={34} />
+        <div class="person-headmain">
+          <div class="person-nameline">
+            <span class={`fdot f-${m.faction}`} />
+            <span class="person-name">{m.name}</span>
+            <span class={`standing-tag ${tone}`}>{signed(m.standing)}</span>
+          </div>
+          <div class="person-role">
+            {m.role} · <span class="person-mood">{standingWord(m.standing)}</span>
+          </div>
+        </div>
       </div>
       <BipolarBar value={m.standing} />
       {m.agenda && <div class="person-agenda">“{m.agenda}”</div>}
@@ -57,12 +66,17 @@ function CapitalCard({ c, loops, week }: { c: ForeignCapital; loops: OpenLoop[];
   return (
     <li class="person">
       <div class="person-head">
-        <span class="person-name">{c.name}</span>
-        {leader && <span class="cap-leader">{leader}</span>}
-        <span class={`standing-tag ${tone}`}>{signed(c.read)}</span>
+        <Portrait seed={c.id + c.name} label={leader ?? c.name} color="#8fa3c9" size={34} />
+        <div class="person-headmain">
+          <div class="person-nameline">
+            <span class="person-name">{c.name}</span>
+            {leader && <span class="cap-leader">{leader}</span>}
+            <span class={`standing-tag ${tone}`}>{signed(c.read)}</span>
+          </div>
+          {c.posture && <div class="person-agenda plain">{c.posture}</div>}
+        </div>
       </div>
       <BipolarBar value={c.read} />
-      {c.posture && <div class="person-agenda plain">{c.posture}</div>}
       <TiedLoops label="In play" loops={tied} week={week} />
     </li>
   )
@@ -75,8 +89,29 @@ export function Dossier({ game }: { game: GameState }) {
   const secrets = game.buriedButLive.filter((s) => s.triggered)
   const dueCount = liveLoops.filter((l) => isLoopDue(l, week)).length
 
+  const queued = game.queuedTurnKind && game.queuedTurnKind !== 'standard' ? game.queuedTurnKind : null
+
   return (
     <div class="dossier screen-scroll">
+      {(game.turnKind !== 'standard' || queued) && (
+        <div class="this-week">
+          {game.turnKind !== 'standard' && (
+            <div class="tw-row">
+              <span class="tw-label">This week</span>
+              <SetpieceChip kind={game.turnKind} />
+              <span class="tw-blurb">{TURN_KIND_META[game.turnKind].blurb}</span>
+            </div>
+          )}
+          {queued && (
+            <div class="tw-row">
+              <span class="tw-label">Next week</span>
+              <SetpieceChip kind={queued} />
+              <span class="tw-blurb">{TURN_KIND_META[queued].blurb}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       <div class="sec-head">
         <h3 class="sec">Open loops</h3>
         {dueCount > 0 && <span class="sec-count due">{dueCount} due</span>}
@@ -164,14 +199,8 @@ export function Dossier({ game }: { game: GameState }) {
         </>
       )}
 
-      <h3 class="sec">Key history</h3>
-      <ul class="history">
-        {game.keyHistory.slice().reverse().map((h, i) => (
-          <li key={i}>
-            <span class="hist-week">W{h.week}</span> {h.summary}
-          </li>
-        ))}
-      </ul>
+      <h3 class="sec">Premiership timeline</h3>
+      <Timeline game={game} />
 
       {doneLoops.length > 0 && (
         <>

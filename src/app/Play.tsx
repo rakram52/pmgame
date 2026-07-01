@@ -2,15 +2,20 @@ import { useState, useEffect, useRef } from 'preact/hooks'
 import type { GameState } from '../state/schema'
 import { THREAT_LABELS } from '../state/schema'
 import type { Connection } from '../llm/types'
-import { chooseAction, applyReply, prepareAndBuild, runTurnAuto, type ApplyResult } from '../game/controller'
+import { chooseAction, applyReply, prepareAndBuild, runTurnAuto, queueTurnKind, type ApplyResult } from '../game/controller'
 import { buildRepairPrompt } from '../prompt/repair'
 import { copyText, readClipboard, chatUrl } from './clipboard'
 import { RichText } from './richtext'
-import { Gauge, ThreatPips, approvalTone, threatTone } from './meters'
+import { Gauge, ThreatPips, Sparkline, DeltaTag, lastSampleDelta, approvalTone, threatTone } from './meters'
+import { SetpieceChip, SetpieceBanner, PmActions } from './setpiece'
+import { BudgetSheet, ReshuffleSheet } from './setpieceInputs'
+import { WhyChanged } from './progress'
+import { Summary } from './Summary'
+import { computeEnding } from '../engine/endings'
 
 type Failure = Extract<ApplyResult, { ok: false }>['failure']
 
-export function Play({ game, connection, onCommit }: { game: GameState; connection: Connection | null; onCommit: (g: GameState) => void }) {
+export function Play({ game, connection, onCommit, onNewGame }: { game: GameState; connection: Connection | null; onCommit: (g: GameState) => void; onNewGame?: () => void }) {
   const [working, setWorking] = useState<GameState>(() => (game.options === null ? prepareAndBuild(game) : game))
   const [paste, setPaste] = useState('')
   const [error, setError] = useState<Failure | null>(null)
@@ -57,8 +62,8 @@ export function Play({ game, connection, onCommit }: { game: GameState; connecti
     }
   }
 
-  function act(action: string, risk: Parameters<typeof chooseAction>[2]) {
-    const acted = chooseAction(game, action, risk)
+  function act(action: string, risk: Parameters<typeof chooseAction>[2], injections: string[] = []) {
+    const acted = chooseAction(game, action, risk, injections)
     setWorking(acted)
     setError(null)
     if (autoMode && !forceManual) runAuto(acted)
@@ -101,6 +106,7 @@ export function Play({ game, connection, onCommit }: { game: GameState; connecti
   }
 
   const threat = THREAT_LABELS[Math.round(game.stateBlock.threat) - 1] ?? game.stateBlock.threat
+  const ended = (game.ending ?? computeEnding(game)) != null
   const pendingPrompt = opening || working.chosenAction.trim().length > 0
   const useManual = !autoMode || forceManual
   const modelName = connection?.model || (game.houseRules.modelProfile === 'chatgpt' ? 'ChatGPT' : 'Claude')
@@ -112,29 +118,41 @@ export function Play({ game, connection, onCommit }: { game: GameState; connecti
           <span class="wk-date">
             Week {game.calendar.week} · {formatDate(game.calendar.dateISO)}
           </span>
-          <span class={`pill status-${game.status}`}>{game.status}</span>
+          <div class="wk-tags">
+            <SetpieceChip kind={game.turnKind} />
+            <span class={`pill status-${game.status}`}>{game.status}</span>
+          </div>
         </div>
         <div class="hud-meters">
           <div class="hud-meter">
             <div class="hud-meter-top">
               <span class="hud-label">Approval</span>
-              <span class="hud-num">{game.stateBlock.approval}%</span>
+              <span class="hud-num">
+                {game.stateBlock.approval}% <DeltaTag delta={lastSampleDelta(game.statHistory, 'approval')} goodDir={1} />
+              </span>
             </div>
             <Gauge value={game.stateBlock.approval} tone={approvalTone(game.stateBlock.approval)} />
+            <Sparkline values={game.statHistory.map((s) => s.approval)} tone={approvalTone(game.stateBlock.approval)} />
           </div>
           <div class="hud-meter">
             <div class="hud-meter-top">
               <span class="hud-label">Reform UK</span>
-              <span class="hud-num">{game.stateBlock.reform}%</span>
+              <span class="hud-num">
+                {game.stateBlock.reform}% <DeltaTag delta={lastSampleDelta(game.statHistory, 'reform')} goodDir={-1} />
+              </span>
             </div>
             <Gauge value={game.stateBlock.reform} max={50} tone={threatTone(game.stateBlock.reform, 26, 32)} />
+            <Sparkline values={game.statHistory.map((s) => s.reform)} tone={threatTone(game.stateBlock.reform, 26, 32)} />
           </div>
           <div class="hud-meter">
             <div class="hud-meter-top">
               <span class="hud-label">Threat</span>
-              <span class="hud-num">{threat}</span>
+              <span class="hud-num">
+                {threat} <DeltaTag delta={lastSampleDelta(game.statHistory, 'threat')} goodDir={-1} />
+              </span>
             </div>
             <ThreatPips level={game.stateBlock.threat} />
+            <Sparkline values={game.statHistory.map((s) => s.threat)} tone={threatTone(game.stateBlock.threat, 4, 5)} />
           </div>
         </div>
         <div class="wk-sub">
@@ -143,14 +161,18 @@ export function Play({ game, connection, onCommit }: { game: GameState; connecti
       </header>
 
       <div class="play-body">
-      {game.status === 'lost' && (
-        <div class="lost-banner">The government has fallen. Review the dossier, or start anew from the menu.</div>
-      )}
-
+      {ended ? (
+        <Summary game={game} onNewGame={onNewGame} />
+      ) : (
+      <>
       {game.currentScene ? (
-        <div class="scene">
-          <RichText text={game.currentScene} />
-        </div>
+        <>
+          <SetpieceBanner game={game} />
+          <div class={game.turnKind === 'standard' ? 'scene' : `scene sp-scene sp-scene-${game.turnKind}`}>
+            <RichText text={game.currentScene} />
+          </div>
+          <WhyChanged key={game.turnIndex} game={game} />
+        </>
       ) : (
         <div class="scene opening-note">
           <p>
@@ -258,6 +280,10 @@ export function Play({ game, connection, onCommit }: { game: GameState; connecti
             Begin ▶
           </button>
         </div>
+      ) : game.turnKind === 'budget' && game.options ? (
+        <BudgetSheet game={game} onConfirm={(a, r, inj) => act(a, r, inj)} busy={autoBusy} />
+      ) : game.turnKind === 'reshuffle' && game.options ? (
+        <ReshuffleSheet game={game} onConfirm={(a, r, inj) => act(a, r, inj)} busy={autoBusy} />
       ) : (
         game.options && (
           <div class="choices">
@@ -278,8 +304,11 @@ export function Play({ game, connection, onCommit }: { game: GameState; connecti
                 Send instruction
               </button>
             </div>
+            <PmActions game={game} onQueue={(k) => onCommit(queueTurnKind(game, k))} />
           </div>
         )
+      )}
+      </>
       )}
       </div>
     </div>

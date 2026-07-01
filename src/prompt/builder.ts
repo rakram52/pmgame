@@ -2,6 +2,7 @@ import type { GameState } from '../state/schema'
 import { DOCTRINE_KEYS, THREAT_LABELS, TERMINAL_LOOP_STATUSES } from '../state/schema'
 import { RULES_CORE, OUTPUT_CONTRACT_CHAT, OUTPUT_CONTRACT_API } from './systemRules'
 import { FEW_SHOT } from './fewshot'
+import { setpieceSection } from './setpieces'
 
 export type PromptMode = 'chat' | 'api'
 
@@ -140,13 +141,20 @@ export function buildTurnPrompt(s: GameState, mode: PromptMode = 'chat'): string
     sections.push('', '━━━ ALSO IN PLAY THIS WEEK ━━━', s.pendingInjections.map((i) => `- ${i}`).join('\n'))
   }
 
+  const setpiece = setpieceSection(s)
+  if (setpiece) {
+    sections.push('', '━━━ THIS WEEK IS A SET PIECE ━━━', setpiece)
+  }
+
   sections.push('', '━━━ THE PM ━━━')
   if (opening) {
     sections.push(
-      `This is the opening turn (Week ${s.calendar.week}, ${s.calendar.dateISO}). Set the scene at Number 10, establish the mood, and present the first real decision with three options. No action has been taken yet.`,
+      `This is the OPENING scene (Week ${s.calendar.week}, ${s.calendar.dateISO}) — curtain-up on this premiership. Establish the world in full and with atmosphere: the mood inside Number 10 on the first real morning, the in-tray already on fire (the live streams, the ${s.calendar.daysToLocals} days to the locals, Reform's lead, the markets), the Cabinet the PM has just appointed and the tensions baked into those choices, and the sheer weight of the office. Bring two or three of the key players on by name and let their agendas show. Then land the first genuine decision with three distinct options. No action has been taken yet — spend the words, set the stage richly.`,
     )
   } else {
-    sections.push(`The PM's decision this week: ${s.chosenAction}`)
+    sections.push(
+      `The PM's decision this week: ${s.chosenAction}\n\nNarrate the FALLOUT of this choice with real consequence — who reacts, who gains, who is exposed, what the papers make of it — honouring the engine roll above. Then build the next week's scene to the same standard: stakes, continuity, characters, a fresh decision.`,
+    )
   }
 
   // The few-shot teaches the fenced-block format, so it's chat-only.

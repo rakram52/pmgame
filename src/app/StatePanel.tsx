@@ -1,6 +1,7 @@
 import type { GameState } from '../state/schema'
 import { THREAT_LABELS } from '../state/schema'
 import { Gauge, ThreatPips, approvalTone, threatTone, type Tone } from './meters'
+import { HomeWorldDashboard } from './progress'
 
 function Stat({
   label,
@@ -32,6 +33,8 @@ export function StatePanel({ game }: { game: GameState }) {
 
   return (
     <div class="statepanel screen-scroll">
+      <HomeWorldDashboard game={game} />
+
       <div class="grid">
         <Stat label="Approval" value={sb.approval} suffix="%" meter={{ value: sb.approval, tone: approvalTone(sb.approval) }} />
         <Stat label="Reform UK" value={sb.reform} suffix="%" meter={{ value: sb.reform, max: 50, tone: threatTone(sb.reform, 26, 32) }} />

@@ -1,6 +1,13 @@
 import type { GameState, GameStatus } from './schema'
 import type { TurnDelta } from './delta'
 import { clamp } from '../engine/resolve'
+import { isSetpiece } from '../engine/turnKinds'
+import { computeEnding } from '../engine/endings'
+
+/** Next-cycle countdown reset after the locals resolve (annual cadence). */
+const NEXT_LOCALS_DAYS = 364
+const STAT_HISTORY_CAP = 60
+const SETPIECE_HISTORY_CAP = 40
 
 /**
  * Applies a validated TurnDelta to canonical state. This is the anti-drift core.
@@ -73,6 +80,11 @@ export function applyDelta(prev: GameState, delta: TurnDelta, prose: string): Re
   if (delta.calendar?.setDateISO) s.calendar.dateISO = delta.calendar.setDateISO
   if (typeof delta.calendar?.daysToLocalsDelta === 'number') {
     s.calendar.daysToLocals = Math.max(0, s.calendar.daysToLocals + delta.calendar.daysToLocalsDelta)
+  }
+  // Once the locals have been held (this is the election-night week), roll the
+  // countdown on to the next annual cycle so the set-piece can't re-fire.
+  if (s.turnKind === 'election' && s.calendar.daysToLocals <= 0) {
+    s.calendar.daysToLocals = NEXT_LOCALS_DAYS
   }
 
   // 4. Open loops — add / update / resolve. Never silently dropped.
@@ -192,6 +204,30 @@ export function applyDelta(prev: GameState, delta: TurnDelta, prose: string): Re
     s.keyHistory.push({ week: s.calendar.week, turnIndex: s.turnIndex, summary: delta.keyHistoryAppend.trim() })
   }
 
+  // 9a. Set-piece log — record each set-piece week once (drives the balancer +
+  //     the timeline tags). The scene is generated on the turn its kind is set.
+  if (isSetpiece(s.turnKind)) {
+    s.setpieceHistory.push({ week: s.calendar.week, turnIndex: s.turnIndex, kind: s.turnKind })
+    if (s.setpieceHistory.length > SETPIECE_HISTORY_CAP) s.setpieceHistory = s.setpieceHistory.slice(-SETPIECE_HISTORY_CAP)
+  }
+
+  // 9b. Stat history — one capped, append-only sample per commit, for sparklines.
+  {
+    const sb = s.stateBlock
+    s.statHistory.push({
+      week: s.calendar.week,
+      turnIndex: s.turnIndex,
+      approval: sb.approval,
+      reform: sb.reform,
+      capital: sb.capital,
+      whip: sb.whip,
+      gilt: sb.gilt,
+      gbp: sb.gbp,
+      threat: sb.threat,
+    })
+    if (s.statHistory.length > STAT_HISTORY_CAP) s.statHistory = s.statHistory.slice(-STAT_HISTORY_CAP)
+  }
+
   // 10. Narrative summary (rolling, code-trimmed).
   if (delta.narrativeSummary != null) s.narrativeSummary = trimTo(delta.narrativeSummary, 900)
 
@@ -203,14 +239,19 @@ export function applyDelta(prev: GameState, delta: TurnDelta, prose: string): Re
   // 12. Advance the turn counter only when a real decision was resolved.
   if (wasDecision) s.turnIndex += 1
 
-  // 13. Clear the per-turn surface.
+  // 13. Clear the per-turn surface. A queued set-piece is consumed by the turn
+  //     it fired on, so clear it now.
   s.pendingRolls = null
   s.pendingInjections = []
   s.chosenAction = ''
   s.chosenRisk = null
+  s.queuedTurnKind = null
 
   // 14. Crisis tier — computed by code, model's hint is advisory only.
   s.status = computeStatus(s)
+
+  // 15. Terminal outcome — code-owned and sticky (once ended, stays ended).
+  if (!s.ending) s.ending = computeEnding(s)
 
   return { state: s, warnings }
 }

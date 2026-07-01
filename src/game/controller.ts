@@ -1,4 +1,4 @@
-import type { GameState, Risk } from '../state/schema'
+import type { GameState, Risk, TurnKind } from '../state/schema'
 import { prepareTurn } from '../engine/turn'
 import { buildTurnPrompt } from '../prompt/builder'
 import { extractDelta, type DeltaExtraction } from '../state/delta'
@@ -14,18 +14,26 @@ import { describeLlmError } from '../llm/errors'
  *     auto-repairs, commits) in one step.
  */
 
-/** Record the PM's chosen action, then roll + build the prompt for it. */
-export function chooseAction(state: GameState, action: string, risk: Risk | null): GameState {
+/** Record the PM's chosen action, then roll + build the prompt for it.
+ *  `seedInjections` lets a structured set-piece (e.g. the Budget) pre-load an
+ *  engine directive that survives into this turn's prompt. */
+export function chooseAction(state: GameState, action: string, risk: Risk | null, seedInjections: string[] = []): GameState {
   const next: GameState = {
     ...structuredClone(state),
     chosenAction: action,
     chosenRisk: risk,
     pendingRolls: null, // force a fresh roll for this decision
-    pendingInjections: [],
+    pendingInjections: [...seedInjections],
     lastPrompt: '',
     lastRawReply: '',
   }
   return prepareAndBuild(next)
+}
+
+/** Queue a player-initiated set-piece for the NEXT turn (US-106). A direct state
+ *  edit — it doesn't advance a turn; the scheduler consumes it next `prepareTurn`. */
+export function queueTurnKind(state: GameState, kind: TurnKind | null): GameState {
+  return { ...structuredClone(state), queuedTurnKind: kind }
 }
 
 /** Ensure the turn is rolled and the copy-paste prompt is built (idempotent per turn). */

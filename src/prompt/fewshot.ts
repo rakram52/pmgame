@@ -1,31 +1,42 @@
 /** One worked example. Included on turn 1 for strong models, every turn for the
- *  'other' model profile. Kept short so prompts stay flat. */
-export const FEW_SHOT = `EXAMPLE (format only — do not reuse its content):
+ *  'other' model profile. Models the target RICHNESS as well as the format —
+ *  stakes, continuity, characterful staging, consequence, then the decision. */
+export const FEW_SHOT = `EXAMPLE (format & RICHNESS to match — do not reuse its content):
 
-Week 4 — Tuesday 5 May, 09:20. The Cabinet Room. The Chancellor is already seated; her coffee is untouched.
+Week 4 — Tuesday 5 May 2026, 09:20. Two days to the locals, and the coldest number in Westminster this morning isn't in the polls — it's in a Treasury spreadsheet nobody was meant to see yet.
 
-*[PPS note, 09:14]* The Treasury's energy-cap costing came in overnight. It is worse than briefed.
+WEEK SO FAR
+- The energy-cap costing you commissioned last week came back overnight, and it's worse than the line the Chancellor gave the House: not £15bn, but £22bn to hold bills through winter.
+- Reform spent the weekend on the doorsteps you're about to lose, promising exactly the cap you can't afford.
+- A Number 11 aide has already been overheard calling it "the PM's bill, not ours" — the Treasury is pre-writing the story where this goes wrong.
+- The 2019 intake is holding; everyone else wants a doorstep answer by Thursday.
 
-"Twenty-two billion, Prime Minister," she says, not looking up. "If we extend past July. The OBR will have opinions."
+The Cabinet Room. Rachel Beaumont has her coffee untouched and her red folder closed — never a good sign.
 
-The Chief Whip leans in: "The 2019 intake will wear it. The rest want to know what they tell doorsteps on the 7th."
+*[PPS note, 09:14]* Chancellor briefed the lobby "no unfunded commitments" at 8. If you extend, she's on record against you before you've decided.
 
-**A)** Extend the universal cap through winter — eat the £22bn. *(hard)*
-**B)** Pivot to targeted support for the bottom 40% and pensioners. *(moderate)*
-**C)** Let the cap lapse; stand up a hardship fund only. *(desperate)*
+"Twenty-two billion, Prime Minister," she says, finally looking up. "I can find it. I can't find it *and* keep the fiscal rules *and* keep the markets calm two days before you ask the country to trust us with the councils. Pick two."
+
+The Chief Whip, quieter: "The benches will wear the money. What they won't wear is finding out from the *Mail* that we dithered."
+
+Whatever you choose is a story by tonight — the only question is whose.
+
+**A)** Extend the universal cap through winter — eat the £22bn, dare the markets. *(hard)*
+**B)** Pivot to targeted support for the bottom 40% and pensioners — defensible, dull. *(moderate)*
+**C)** Let the cap lapse; stand up a hardship fund only — hold the line, own the pain. *(desperate)*
 *Or give your own instruction.*
 
 <<<DELTA
 {
   "options": {
-    "A": "Extend the universal cap through winter — eat the £22bn.",
+    "A": "Extend the universal cap through winter — eat the £22bn, dare the markets.",
     "B": "Pivot to targeted support for the bottom 40% and pensioners.",
     "C": "Let the cap lapse; stand up a hardship fund only."
   },
   "optionRisks": { "A": "hard", "B": "moderate", "C": "desperate" },
   "stateBlock": { "capital": -1 },
-  "streams": { "update": [ { "id": "stream2", "reading": "Cap costing confirmed at £22bn; decision live", "trend": "rising" } ] },
-  "keyHistoryAppend": "Energy-cap extension costed at £22bn; PM faces the cliff-edge before the locals.",
-  "narrativeSummary": "Week 4: the energy-cap decision lands at £22bn, days before the 7 May locals."
+  "streams": { "update": [ { "id": "stream2", "reading": "Cap costing confirmed at £22bn; Chancellor on record against; decision live", "trend": "rising" } ] },
+  "keyHistoryAppend": "Energy-cap extension costed at £22bn; Chancellor briefs against it two days before the locals.",
+  "narrativeSummary": "Week 4: the £22bn energy-cap decision lands days before the 7 May locals, with the Treasury already distancing itself."
 }
 DELTA>>>`

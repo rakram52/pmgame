@@ -7,7 +7,7 @@ import { z } from 'zod'
  * delta; code owns and validates everything here.
  */
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 4
 
 // ---------------------------------------------------------------------------
 // Small enums / leaf schemas
@@ -43,6 +43,16 @@ export const TERMINAL_LOOP_STATUSES: LoopStatus[] = ['delivered', 'resolved', 'f
 
 export const StatusSchema = z.enum(['stable', 'wounded', 'lost'])
 export type GameStatus = z.infer<typeof StatusSchema>
+
+/** A terminal outcome for the premiership (US-503). Null while the game runs. */
+export const EndingSchema = z.enum(['fallen', 'defeated', 'survived', 'triumph'])
+export type Ending = z.infer<typeof EndingSchema>
+
+/** The KIND of a given week, decided in code by the scheduler (never the model).
+ *  `standard` is the ordinary read-a-scene / pick-an-option turn; the rest are
+ *  set-pieces that read and play differently. */
+export const TurnKindSchema = z.enum(['standard', 'pmqs', 'budget', 'cobra', 'summit', 'reshuffle', 'election'])
+export type TurnKind = z.infer<typeof TurnKindSchema>
 
 export const RiskSchema = z.enum(['easy', 'moderate', 'hard', 'desperate'])
 export type Risk = z.infer<typeof RiskSchema>
@@ -112,6 +122,29 @@ export const KeyHistoryEntrySchema = z.object({
   summary: z.string(),
 })
 export type KeyHistoryEntry = z.infer<typeof KeyHistoryEntrySchema>
+
+/** One row of the code-owned set-piece log — the memory the cadence balancer
+ *  reads to keep home and abroad in balance and to tag timeline entries. */
+export const SetpieceHistoryEntrySchema = z.object({
+  week: z.number(),
+  turnIndex: z.number(),
+  kind: TurnKindSchema,
+})
+export type SetpieceHistoryEntry = z.infer<typeof SetpieceHistoryEntrySchema>
+
+/** One append-only sample of the headline numbers, for sparklines and trends. */
+export const StatSampleSchema = z.object({
+  week: z.number(),
+  turnIndex: z.number(),
+  approval: z.number(),
+  reform: z.number(),
+  capital: z.number(),
+  whip: z.number(),
+  gilt: z.number(),
+  gbp: z.number(),
+  threat: z.number(),
+})
+export type StatSample = z.infer<typeof StatSampleSchema>
 
 export const PendingConsequenceSchema = z.object({
   id: z.string(),
@@ -267,6 +300,17 @@ export const GameStateSchema = z.object({
   turnIndex: z.number().default(1),
   phase: z.enum(['setup', 'play']).default('setup'),
 
+  /** What KIND of week this is — resolved in code by the scheduler each turn. */
+  turnKind: TurnKindSchema.default('standard'),
+  /** A player-requested set-piece for the NEXT turn (agency between forced
+   *  decisions). Consumed and cleared by the reducer once the turn commits. */
+  queuedTurnKind: TurnKindSchema.nullable().default(null),
+  /** Code-owned log of the set-pieces that have fired, capped, for the balancer. */
+  setpieceHistory: z.array(SetpieceHistoryEntrySchema).default([]),
+  /** Small human label a set-piece needs surfaced (e.g. the summit's capital),
+   *  set by the scheduler so the prompt and the banner agree. */
+  setpieceContext: z.string().default(''),
+
   rng: RngStateSchema,
   calendar: CalendarSchema,
   doctrine: DoctrineSchema,
@@ -280,6 +324,8 @@ export const GameStateSchema = z.object({
   foreignCapitals: z.array(ForeignCapitalSchema).default([]),
   buriedButLive: z.array(SecretSchema).default([]),
   keyHistory: z.array(KeyHistoryEntrySchema).default([]),
+  /** Append-only, capped trail of the headline numbers for sparklines/trends. */
+  statHistory: z.array(StatSampleSchema).default([]),
   pendingConsequences: z.array(PendingConsequenceSchema).default([]),
 
   worldVariance: z
@@ -304,5 +350,7 @@ export const GameStateSchema = z.object({
   lastPrompt: z.string().default(''),
   lastRawReply: z.string().default(''),
   status: StatusSchema.default('stable'),
+  /** Terminal outcome, code-owned and sticky once set (null while the game runs). */
+  ending: EndingSchema.nullable().default(null),
 })
 export type GameState = z.infer<typeof GameStateSchema>

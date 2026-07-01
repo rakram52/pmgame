@@ -78,7 +78,7 @@ export function App() {
   return (
     <div class="app">
       <main class="content">
-        {tab === 'play' && <Play game={game} connection={connection} onCommit={commit} />}
+        {tab === 'play' && <Play game={game} connection={connection} onCommit={commit} onNewGame={() => setScreen('setup')} />}
         {tab === 'dossier' && <Dossier game={game} />}
         {tab === 'state' && <StatePanel game={game} />}
         {tab === 'settings' && (

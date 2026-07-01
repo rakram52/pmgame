@@ -2,6 +2,10 @@ import type { GameState, PendingRolls } from '../state/schema'
 import { Rng } from './rng'
 import { resolveAction } from './resolve'
 import { rollWorldVariance, maybeRollEvent } from './events'
+import { scheduleTurnKind, summitFocusCapital } from './schedule'
+import { computeElectionResult } from './setpieceLogic'
+
+export { scheduleTurnKind } from './schedule'
 
 /**
  * Everything the engine rolls for a turn, BEFORE the prompt is built. It runs
@@ -18,7 +22,8 @@ export function prepareTurn(input: GameState): GameState {
   if (state.pendingRolls) return state // already prepared this turn
 
   const rng = new Rng(state.rng.seed, state.rng.counter)
-  const injections: string[] = []
+  // Seed from any injections a set-piece UI pre-loaded (e.g. Budget headroom).
+  const injections: string[] = [...state.pendingInjections]
   const rolls: PendingRolls = { action: null, worldVariance: null, event: null }
 
   // 1. Action resolution (only for real decisions, not the opening scene).
@@ -53,8 +58,26 @@ export function prepareTurn(input: GameState): GameState {
     }
   }
 
-  state.rng.counter = rng.counter
+  // Attach rolls BEFORE scheduling so the scheduler can react to a fresh event.
   state.pendingRolls = rolls
+
+  // 6. Resolve this week's KIND in code (drift-proof). Must come after the event
+  //    roll and before the prompt is built.
+  const kind = scheduleTurnKind(state, rng)
+  state.turnKind = kind
+
+  // 7. Per-kind context + engine-computed numbers the model must narrate.
+  state.setpieceContext = ''
+  if (kind === 'summit') {
+    state.setpieceContext = summitFocusCapital(state)
+  } else if (kind === 'cobra') {
+    state.setpieceContext = rolls.event?.title ?? 'Security'
+  } else if (kind === 'election') {
+    const result = computeElectionResult(state)
+    injections.push(result.injection)
+  }
+
+  state.rng.counter = rng.counter
   state.pendingInjections = injections
   return state
 }
