@@ -89,6 +89,10 @@ export function scheduleTurnKind(state: GameState, rng: Rng): TurnKind {
   // The establishing scene is always standard.
   if (isOpening(state)) return 'standard'
 
+  // 0. A live encounter holds the floor: keep its kind until it resolves, so we
+  //    never interrupt a summit or a 1:1 mid-conversation to reschedule.
+  if (state.activeScene) return state.activeScene.kind
+
   // 1. A player-queued set-piece wins outright.
   if (state.queuedTurnKind && state.queuedTurnKind !== 'standard') return state.queuedTurnKind
 

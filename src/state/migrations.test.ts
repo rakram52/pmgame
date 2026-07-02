@@ -19,6 +19,7 @@ describe('migrations (FR-16 — old saves keep loading)', () => {
     delete full.queuedTurnKind
     delete full.setpieceHistory
     delete full.setpieceContext
+    delete full.activeScene
     delete full.statHistory
     delete full.ending
     delete full.lastAction
@@ -30,6 +31,7 @@ describe('migrations (FR-16 — old saves keep loading)', () => {
     expect(migrated.queuedTurnKind).toBeNull()
     expect(migrated.setpieceHistory).toEqual([])
     expect(migrated.setpieceContext).toBe('')
+    expect(migrated.activeScene).toBeNull()
     expect(migrated.statHistory).toEqual([])
     expect(migrated.ending).toBeNull()
     expect(migrated.lastAction).toBe('')

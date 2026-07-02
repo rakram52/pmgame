@@ -37,11 +37,39 @@ export const TurnDeltaSchema = z.object({
     )
     .optional(),
 
+  /** Nudge the real-world national indicators (net migration, NHS waiting list,
+   *  inflation, the deficit, ...). DELTAS on `value`, clamped by the reducer.
+   *  Move only the ones the week's events plausibly touched; leave the rest. */
+  indicators: z
+    .array(
+      z.object({
+        key: z.string(),
+        valueDelta: z.number().optional(),
+        trend: TrendSchema.optional(),
+        note: z.string().optional(),
+      }),
+    )
+    .optional(),
+
   calendar: z
     .object({
       advanceWeeks: z.number().optional(),
       setDateISO: z.string().optional(),
       daysToLocalsDelta: z.number().optional(),
+    })
+    .optional(),
+
+  /** Live-encounter control. The narrator PROPOSES; the engine owns the clock and
+   *  a hard beat cap. `open` begins/continues a clock-held face-to-face on an
+   *  ordinary week (a 1:1 briefing, a confrontation); `resolve` ends the current
+   *  encounter this beat. Engine-scheduled set-pieces (summit/COBRA/PMQs) manage
+   *  their own beats — the narrator only needs `resolve` to end one early. */
+  encounter: z
+    .object({
+      open: z.boolean().optional(),
+      with: z.string().optional(),
+      beats: z.number().optional(),
+      resolve: z.boolean().optional(),
     })
     .optional(),
 

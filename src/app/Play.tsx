@@ -7,7 +7,7 @@ import { buildRepairPrompt } from '../prompt/repair'
 import { copyText, readClipboard, chatUrl } from './clipboard'
 import { RichText } from './richtext'
 import { Gauge, ThreatPips, Sparkline, DeltaTag, lastSampleDelta, approvalTone, threatTone } from './meters'
-import { SetpieceChip, SetpieceBanner, PmActions } from './setpiece'
+import { SetpieceChip, SetpieceBanner, EncounterBanner, PmActions } from './setpiece'
 import { BudgetSheet, ReshuffleSheet } from './setpieceInputs'
 import { WhyChanged } from './progress'
 import { Summary } from './Summary'
@@ -171,6 +171,7 @@ export function Play({ game, connection, onCommit, onNewGame }: { game: GameStat
       {game.currentScene ? (
         <>
           <SetpieceBanner game={game} />
+          {game.turnKind === 'standard' && game.activeScene && <EncounterBanner scene={game.activeScene} />}
           {game.lastAction && (
             <div class="last-move">
               <span class="last-move-label">Your move</span>
@@ -178,7 +179,7 @@ export function Play({ game, connection, onCommit, onNewGame }: { game: GameStat
             </div>
           )}
           <div class={game.turnKind === 'standard' ? 'scene' : `scene sp-scene sp-scene-${game.turnKind}`}>
-            <RichText text={game.currentScene} />
+            <RichText text={game.currentScene} cast={[...game.cabinet, ...game.standingCast]} />
           </div>
           <WhyChanged key={game.turnIndex} game={game} />
         </>

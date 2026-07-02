@@ -1,4 +1,4 @@
-import type { GameState, CastMember, DoctrineKey, PendingConsequence, ForeignCapital, Stream, DoctrineDial } from '../state/schema'
+import type { GameState, CastMember, DoctrineKey, PendingConsequence, ForeignCapital, Stream, DoctrineDial, Indicator } from '../state/schema'
 import { GameStateSchema, DOCTRINE_KEYS } from '../state/schema'
 import { Rng, freshSeed } from '../engine/rng'
 import { EARLIEST_CONSEQUENCE_WEEK } from '../engine/pacing'
@@ -99,6 +99,60 @@ export function initGameState(sel: SetupSelections, seedOverride?: string): Game
     { id: nid('cap'), name: 'Moscow', read: -40, posture: 'Frozen front; active North Sea grey-zone.', lastUpdatedWeek: 1 },
   ]
 
+  // --- National indicators (real figures a PM would see taking office April
+  //     2026 — the latest actual prints published by early 2026). Sourced from
+  //     ONS, OBR/Treasury, NHS England, Ofgem, Home Office, MoJ and late-2025
+  //     polling; the narrator nudges these as the premiership plays out. ---
+  const ind = (key: string, label: string, domain: string, value: number, opts: Partial<Indicator> = {}): Indicator => ({
+    key,
+    label,
+    domain,
+    value,
+    min: 0,
+    max: 100,
+    prefix: '',
+    suffix: '',
+    trend: 'steady',
+    goodDir: 0,
+    note: '',
+    lastUpdatedWeek: 1,
+    ...opts,
+  })
+
+  const indicators: Indicator[] = [
+    // Macro
+    ind('inflation', 'Inflation (CPI)', 'macro', 3.0, { suffix: '%', min: 0, max: 20, trend: 'falling', goodDir: -1, note: 'Cooling but above the 2% target; services and food sticky.' }),
+    ind('gdpGrowth', 'GDP growth (yr)', 'macro', 1.3, { suffix: '%', min: -10, max: 10, trend: 'steady', goodDir: 1, note: 'Sluggish; near-stagnant into 2026.' }),
+    ind('unemployment', 'Unemployment', 'macro', 5.0, { suffix: '%', min: 0, max: 20, trend: 'rising', goodDir: -1, note: 'Highest since 2021.' }),
+    ind('baseRate', 'BoE base rate', 'macro', 3.75, { suffix: '%', min: 0, max: 15, trend: 'falling', goodDir: 0, note: 'On hold; markets split on the next move.' }),
+    // Fiscal / the budget
+    ind('debtGdp', 'Public debt', 'fiscal', 95.5, { suffix: '% GDP', min: 0, max: 200, trend: 'rising', goodDir: -1, note: 'Near its highest since the early 1960s.' }),
+    ind('deficit', 'Budget deficit', 'fiscal', 133, { prefix: '£', suffix: 'bn', min: -50, max: 400, trend: 'falling', goodDir: -1, note: '≈4.4% of GDP, FY25-26 (OBR).' }),
+    ind('headroom', 'Fiscal headroom', 'fiscal', 22, { prefix: '£', suffix: 'bn', min: -100, max: 150, trend: 'steady', goodDir: 1, note: 'A thin buffer against the fiscal mandate.' }),
+    // Immigration & asylum
+    ind('netMigration', 'Net migration', 'immigration', 331, { suffix: 'k', min: 0, max: 1200, trend: 'falling', goodDir: 0, note: 'Halved from the 2023 peak; the figure on your desk.' }),
+    ind('channelCrossings', 'Channel crossings', 'immigration', 41, { suffix: 'k', min: 0, max: 120, trend: 'rising', goodDir: 0, note: '2025 total; +13% y/y, near record.' }),
+    // NHS & public services
+    ind('nhsWaitList', 'NHS waiting list', 'nhs', 7.3, { suffix: 'm', min: 0, max: 12, trend: 'falling', goodDir: -1, note: 'Off the 7.8m peak; referrals still high.' }),
+    ind('aeFourHour', 'A&E 4hr (all)', 'nhs', 60, { suffix: '%', min: 0, max: 100, trend: 'falling', goodDir: 1, note: 'Chronically below the 95% standard.' }),
+    // Cost of living & energy
+    ind('energyCap', 'Energy price cap', 'costOfLiving', 1758, { prefix: '£', suffix: '/yr', min: 0, max: 6000, trend: 'steady', goodDir: -1, note: 'Typical dual-fuel bill, Q1 2026.' }),
+    ind('realWages', 'Real wage growth', 'costOfLiving', 0.9, { suffix: '%', min: -15, max: 15, trend: 'rising', goodDir: 1, note: 'Regular pay, real terms; thin gains.' }),
+    // Crime & justice
+    ind('prisonCapacity', 'Prisons full', 'crime', 97.8, { suffix: '%', min: 0, max: 120, trend: 'rising', goodDir: -1, note: '~87.3k in ~89.3k places; early-release in play.' }),
+    ind('shoplifting', 'Shoplifting', 'crime', 510, { suffix: 'k', min: 0, max: 1200, trend: 'steady', goodDir: -1, note: 'Offences a year — near record highs.' }),
+    // Housing & planning
+    ind('housingSupply', 'New homes (yr)', 'housing', 209, { suffix: 'k', min: 0, max: 500, trend: 'falling', goodDir: 1, note: 'Net additions 24-25; vs the 300k ambition.' }),
+    // Defence & security
+    ind('defenceSpend', 'Defence spend', 'defence', 2.3, { suffix: '% GDP', min: 0, max: 8, trend: 'rising', goodDir: 1, note: 'Pledged toward 2.5%+ under NATO pressure.' }),
+    // Atlantic / Europe posture — a path-agnostic security read. It measures
+    // HOW SECURE the UK is, not WHICH ally it leans on: raise it any way you can
+    // — Washington, a European pillar, sovereign capability, or new partnerships.
+    ind('strategicSecurity', 'Strategic security', 'atlanticEurope', 60, { suffix: '/100', min: 0, max: 100, trend: 'falling', goodDir: 1, note: 'How secure the UK stands amid great-power flux — raise it any way you choose: allies, sovereign capability, or new partnerships.' }),
+    // Strategy vs Reform
+    ind('labourPoll', 'Labour poll', 'reformStrategy', 20, { suffix: '%', min: 0, max: 60, trend: 'falling', goodDir: 1, note: 'Slipped behind Reform; flirting with third.' }),
+  ]
+
   const draft: GameState = {
     schemaVersion: 1,
     gameId: cryptoId(),
@@ -111,10 +165,12 @@ export function initGameState(sel: SetupSelections, seedOverride?: string): Game
     queuedTurnKind: null,
     setpieceHistory: [],
     setpieceContext: '',
+    activeScene: null,
     rng: { seed, counter: rng.counter },
     calendar: { week: 1, dateISO: '2026-04-13', daysToLocals: 24 },
     doctrine: doctrine as GameState['doctrine'],
-    stateBlock: { approval: 38, reform: 29, gbp: 1.19, gilt: 4.8, capital: 55, whip: 3, threat: 3, custom: [] },
+    stateBlock: { approval: 38, reform: 29, gbp: 1.34, gilt: 4.5, capital: 55, whip: 3, threat: 3, custom: [] },
+    indicators,
     cabinet,
     standingCast,
     openLoops: [],

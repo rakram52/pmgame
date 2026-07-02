@@ -1,8 +1,8 @@
-import type { GameState } from '../state/schema'
+import type { GameState, Indicator } from '../state/schema'
 import { DOCTRINE_KEYS, THREAT_LABELS, TERMINAL_LOOP_STATUSES } from '../state/schema'
 import { RULES_CORE, OUTPUT_CONTRACT_CHAT, OUTPUT_CONTRACT_API } from './systemRules'
 import { FEW_SHOT } from './fewshot'
-import { setpieceSection } from './setpieces'
+import { setpieceSection, encounterSection } from './setpieces'
 import { SETTLING_WEEKS } from '../engine/pacing'
 
 export type PromptMode = 'chat' | 'api'
@@ -22,6 +22,20 @@ const DOCTRINE_LABELS: Record<(typeof DOCTRINE_KEYS)[number], string> = {
   atlanticEurope: 'Atlantic / Europe posture',
   defence: 'Defence & security',
   reformStrategy: 'Strategy vs Reform UK',
+}
+
+/** Human label for an indicator's domain group in the snapshot. */
+function domainLabel(domain: string): string {
+  if (domain === 'economy') return 'Economy'
+  if (domain === 'fiscal') return 'Fiscal'
+  return DOCTRINE_LABELS[domain as (typeof DOCTRINE_KEYS)[number]] ?? domain
+}
+
+/** One indicator, compact: "Net migration 431k ▲ [netMigration]". The key in
+ *  brackets is what the model quotes back in the "indicators" delta. */
+function fmtIndicator(i: Indicator): string {
+  const arrow = i.trend === 'rising' ? '▲' : i.trend === 'falling' ? '▼' : '→'
+  return `${i.label} ${i.prefix}${i.value}${i.suffix} ${arrow} [${i.key}]`
 }
 
 /** Compact, human-readable state snapshot. Not full JSON — the model reads it. */
@@ -45,6 +59,20 @@ export function serializeSnapshot(s: GameState): string {
     lines.push(`  ${DOCTRINE_LABELS[k]}: ${d.value}${d.summary ? ` — ${d.summary}` : ''}`)
     // The PM's standing instruction outranks the preset framing — surface it plainly.
     if (d.directive) lines.push(`      ↳ PM directive: ${d.directive}`)
+  }
+
+  if (s.indicators.length) {
+    lines.push('')
+    lines.push('INDICATORS (real-world numbers; nudge via the "indicators" delta only when the week\'s events move them):')
+    const byDomain = new Map<string, Indicator[]>()
+    for (const i of s.indicators) {
+      const arr = byDomain.get(i.domain) ?? []
+      arr.push(i)
+      byDomain.set(i.domain, arr)
+    }
+    for (const [domain, arr] of byDomain) {
+      lines.push(`  ${domainLabel(domain)}: ${arr.map(fmtIndicator).join(' · ')}`)
+    }
   }
 
   if (s.cabinet.length) {
@@ -147,17 +175,26 @@ export function buildTurnPrompt(s: GameState, mode: PromptMode = 'chat'): string
     sections.push('', '━━━ THIS WEEK IS A SET PIECE ━━━', setpiece)
   }
 
+  const encounter = encounterSection(s)
+  if (encounter) {
+    sections.push('', '━━━ LIVE ENCOUNTER — STAY IN THE ROOM ━━━', encounter)
+  }
+
   if (opening) {
     sections.push('', '━━━ THE PM ━━━')
     sections.push(
       `This is the OPENING scene (Week ${s.calendar.week}, ${s.calendar.dateISO}) — curtain-up on this premiership. Establish the world in full and with atmosphere: the mood inside Number 10 on the first real morning, the in-tray already on fire (the live streams, the ${s.calendar.daysToLocals} days to the locals, Reform's lead, the markets), the Cabinet the PM has just appointed and the tensions baked into those choices, and the sheer weight of the office. Bring two or three of the key players on by name and let their agendas show. Then land the first genuine decision with three distinct options. No action has been taken yet — spend the words, set the stage richly.`,
     )
   } else {
-    sections.push('', '━━━ THE PM HAS INSTRUCTED YOU — ENACT IT ━━━')
-    sections.push(
+    const midScene = !!s.activeScene && s.activeScene.beat < s.activeScene.maxBeats
+    const enactHead =
       `The PM's instruction this week, in their own words:\n\n    “${s.chosenAction}”\n\n` +
-        `This is BINDING and it is the SPINE of the scene. OPEN by showing it actually carried out — the meeting convened and what is said around the table, the order given and who scrambles to obey, the summons answered, the statement delivered — and its immediate consequences, honouring the engine roll above (don't override the roll's success/failure). Name who reacts, who gains, who is exposed, what the papers make of it. Do NOT ignore, water down, reinterpret, or silently skip what the PM asked for; if it's unwise, show it going wrong, but show it happening. ONLY THEN move the week on and present the next decision, to the same standard: stakes, continuity, characters, three fresh options.`,
-    )
+      `This is BINDING and it is the SPINE of the scene. OPEN by showing it actually carried out — the meeting convened and what is said around the table, the order given and who scrambles to obey, the summons answered, the statement delivered — and its immediate consequences, honouring the engine roll above (don't override the roll's success/failure). Name who reacts, who gains, who is exposed, what the papers make of it. Do NOT ignore, water down, reinterpret, or silently skip what the PM asked for; if it's unwise, show it going wrong, but show it happening.`
+    const enactTail = midScene
+      ? ` Then HOLD THERE — this is a live encounter and the clock is stopped (see the LIVE ENCOUNTER section): do NOT advance the week, resolve the whole scene, or jump ahead. Play only the immediate next exchange and present three fresh registers.`
+      : ` ONLY THEN move the week on and present the next decision, to the same standard: stakes, continuity, characters, three fresh options. EXCEPTION: if this instruction is a genuine face-to-face that deserves to breathe — briefing or summoning a minister on something weighty, a confrontation, a negotiation where the back-and-forth IS the drama — do NOT compress it into one line and skip to next week; open a live encounter instead (see LIVE ENCOUNTERS in the rules) and stay in the room.`
+    sections.push('', '━━━ THE PM HAS INSTRUCTED YOU — ENACT IT ━━━')
+    sections.push(enactHead + enactTail)
   }
 
   // Settling-in steer: keep the opening weeks about direction-setting, not crises.

@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks'
 import type { GameState, CastMember, ForeignCapital, OpenLoop } from '../state/schema'
 import { TERMINAL_LOOP_STATUSES } from '../state/schema'
 import { isLoopDue } from '../prompt/builder'
@@ -7,6 +8,9 @@ import { TURN_KIND_META } from '../engine/turnKinds'
 import { SetpieceChip } from './setpiece'
 import { Timeline } from './progress'
 import { Portrait, castColor } from './portrait'
+import { SectionNav, TabView, type SectionDef } from './SectionNav'
+
+type DossierSection = 'agenda' | 'people' | 'world' | 'history'
 
 /** A compact list of the loops an actor is carrying, with due flags. */
 function TiedLoops({ label, loops, week }: { label: string; loops: OpenLoop[]; week: number }) {
@@ -83,6 +87,7 @@ function CapitalCard({ c, loops, week }: { c: ForeignCapital; loops: OpenLoop[];
 }
 
 export function Dossier({ game }: { game: GameState }) {
+  const [section, setSection] = useState<DossierSection>('agenda')
   const week = game.calendar.week
   const liveLoops = game.openLoops.filter((l) => !TERMINAL_LOOP_STATUSES.includes(l.status))
   const doneLoops = game.openLoops.filter((l) => TERMINAL_LOOP_STATUSES.includes(l.status))
@@ -91,132 +96,158 @@ export function Dossier({ game }: { game: GameState }) {
 
   const queued = game.queuedTurnKind && game.queuedTurnKind !== 'standard' ? game.queuedTurnKind : null
 
+  const sections: SectionDef[] = [
+    { key: 'agenda', label: 'Agenda', badge: dueCount },
+    { key: 'people', label: 'People' },
+    { key: 'world', label: 'World' },
+    { key: 'history', label: 'History' },
+  ]
+
   return (
-    <div class="dossier screen-scroll">
-      {(game.turnKind !== 'standard' || queued) && (
-        <div class="this-week">
-          {game.turnKind !== 'standard' && (
-            <div class="tw-row">
-              <span class="tw-label">This week</span>
-              <SetpieceChip kind={game.turnKind} />
-              <span class="tw-blurb">{TURN_KIND_META[game.turnKind].blurb}</span>
-            </div>
-          )}
-          {queued && (
-            <div class="tw-row">
-              <span class="tw-label">Next week</span>
-              <SetpieceChip kind={queued} />
-              <span class="tw-blurb">{TURN_KIND_META[queued].blurb}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div class="sec-head">
-        <h3 class="sec">Open loops</h3>
-        {dueCount > 0 && <span class="sec-count due">{dueCount} due</span>}
-        {dueCount === 0 && liveLoops.length > 0 && <span class="sec-count">{liveLoops.length}</span>}
-      </div>
-      {liveLoops.length === 0 && <p class="empty">No open taskings. Commission something in a scene and it'll be tracked here.</p>}
-      <ul class="loops">
-        {liveLoops.map((l) => {
-          const actor = resolveLoopActor(l, game.cabinet, game.standingCast, game.foreignCapitals)
-          const due = isLoopDue(l, week)
-          return (
-            <li key={l.id} class={due ? 'loop due' : 'loop'}>
-              <div class="loop-title">
-                {l.title}
-                {due && <span class="due-badge">DUE</span>}
-              </div>
-              <div class="loop-owner">
-                {actor?.kind === 'cast' ? (
-                  <>
-                    <span class={`fdot f-${actor.member.faction}`} />
-                    <span class="owner-name">{actor.member.name}</span>
-                    <span class="owner-role">{actor.member.role}</span>
-                  </>
-                ) : actor?.kind === 'capital' ? (
-                  <>
-                    <span class="owner-name">{actor.leader ?? actor.capital.name}</span>
-                    <span class="owner-role">{actor.capital.name}</span>
-                  </>
-                ) : (
-                  <span class="owner-name">{l.who || 'Number 10'}</span>
+    <TabView>
+      <SectionNav sections={sections} active={section} onSelect={(k) => setSection(k as DossierSection)} />
+      <div class="dossier screen-scroll">
+        {section === 'agenda' && (
+          <>
+            {(game.turnKind !== 'standard' || queued) && (
+              <div class="this-week">
+                {game.turnKind !== 'standard' && (
+                  <div class="tw-row">
+                    <span class="tw-label">This week</span>
+                    <SetpieceChip kind={game.turnKind} />
+                    <span class="tw-blurb">{TURN_KIND_META[game.turnKind].blurb}</span>
+                  </div>
                 )}
-                <span class="owner-due">· due W{l.dueWeek} · {l.status}</span>
+                {queued && (
+                  <div class="tw-row">
+                    <span class="tw-label">Next week</span>
+                    <SetpieceChip kind={queued} />
+                    <span class="tw-blurb">{TURN_KIND_META[queued].blurb}</span>
+                  </div>
+                )}
               </div>
-              {l.detail && <div class="loop-detail">{l.detail}</div>}
-            </li>
-          )
-        })}
-      </ul>
+            )}
 
-      <h3 class="sec">Slow-moving streams</h3>
-      <ul class="streams">
-        {game.streams.map((s) => (
-          <li key={s.id}>
-            <span class={`trend t-${s.trend}`}>{s.trend === 'rising' ? '▲' : s.trend === 'falling' ? '▼' : '—'}</span>
-            <span class="stream-name">{s.name}:</span> <span class="stream-read">{s.reading}</span>
-          </li>
-        ))}
-      </ul>
+            <div class="sec-head">
+              <h3 class="sec">Open loops</h3>
+              {dueCount > 0 && <span class="sec-count due">{dueCount} due</span>}
+              {dueCount === 0 && liveLoops.length > 0 && <span class="sec-count">{liveLoops.length}</span>}
+            </div>
+            {liveLoops.length === 0 && <p class="empty">No open taskings. Commission something in a scene and it'll be tracked here.</p>}
+            <ul class="loops">
+              {liveLoops.map((l) => {
+                const actor = resolveLoopActor(l, game.cabinet, game.standingCast, game.foreignCapitals)
+                const due = isLoopDue(l, week)
+                return (
+                  <li key={l.id} class={due ? 'loop due' : 'loop'}>
+                    <div class="loop-title">
+                      {l.title}
+                      {due && <span class="due-badge">DUE</span>}
+                    </div>
+                    <div class="loop-owner">
+                      {actor?.kind === 'cast' ? (
+                        <>
+                          <span class={`fdot f-${actor.member.faction}`} />
+                          <span class="owner-name">{actor.member.name}</span>
+                          <span class="owner-role">{actor.member.role}</span>
+                        </>
+                      ) : actor?.kind === 'capital' ? (
+                        <>
+                          <span class="owner-name">{actor.leader ?? actor.capital.name}</span>
+                          <span class="owner-role">{actor.capital.name}</span>
+                        </>
+                      ) : (
+                        <span class="owner-name">{l.who || 'Number 10'}</span>
+                      )}
+                      <span class="owner-due">· due W{l.dueWeek} · {l.status}</span>
+                    </div>
+                    {l.detail && <div class="loop-detail">{l.detail}</div>}
+                  </li>
+                )
+              })}
+            </ul>
 
-      <h3 class="sec">Cabinet</h3>
-      <ul class="people">
-        {game.cabinet.map((m) => (
-          <CastCard key={m.id} m={m} loops={liveLoops} week={week} />
-        ))}
-      </ul>
+            <h3 class="sec">Slow-moving streams</h3>
+            <ul class="streams">
+              {game.streams.map((s) => (
+                <li key={s.id}>
+                  <span class={`trend t-${s.trend}`}>{s.trend === 'rising' ? '▲' : s.trend === 'falling' ? '▼' : '—'}</span>
+                  <span class="stream-name">{s.name}:</span> <span class="stream-read">{s.reading}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
 
-      {game.standingCast.length > 0 && (
-        <>
-          <h3 class="sec">Officials &amp; standing cast</h3>
-          <ul class="people">
-            {game.standingCast.map((m) => (
-              <CastCard key={m.id} m={m} loops={liveLoops} week={week} />
-            ))}
-          </ul>
-        </>
-      )}
+        {section === 'people' && (
+          <>
+            <h3 class="sec">Cabinet</h3>
+            <ul class="people">
+              {game.cabinet.map((m) => (
+                <CastCard key={m.id} m={m} loops={liveLoops} week={week} />
+              ))}
+            </ul>
 
-      <h3 class="sec">Foreign capitals</h3>
-      <ul class="people">
-        {game.foreignCapitals.map((c) => (
-          <CapitalCard key={c.id} c={c} loops={liveLoops} week={week} />
-        ))}
-      </ul>
+            {game.standingCast.length > 0 && (
+              <>
+                <h3 class="sec">Officials &amp; standing cast</h3>
+                <ul class="people">
+                  {game.standingCast.map((m) => (
+                    <CastCard key={m.id} m={m} loops={liveLoops} week={week} />
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        )}
 
-      {secrets.length > 0 && (
-        <>
-          <h3 class="sec">Surfaced secrets</h3>
-          <ul class="secrets">
-            {secrets.map((s) => (
-              <li key={s.id}>
-                <strong>{s.title}</strong> — {s.detail}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+        {section === 'world' && (
+          <>
+            <h3 class="sec">Foreign capitals</h3>
+            <ul class="people">
+              {game.foreignCapitals.map((c) => (
+                <CapitalCard key={c.id} c={c} loops={liveLoops} week={week} />
+              ))}
+            </ul>
+          </>
+        )}
 
-      <h3 class="sec">Premiership timeline</h3>
-      <Timeline game={game} />
+        {section === 'history' && (
+          <>
+            <h3 class="sec">Premiership timeline</h3>
+            <Timeline game={game} />
 
-      {doneLoops.length > 0 && (
-        <>
-          <h3 class="sec">Closed loops</h3>
-          <ul class="loops closed">
-            {doneLoops.map((l) => (
-              <li key={l.id} class="loop">
-                <div class="loop-title">
-                  {l.title} <span class="loop-meta">— {l.status}</span>
-                </div>
-                {l.resolutionNote && <div class="loop-detail">{l.resolutionNote}</div>}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </div>
+            {secrets.length > 0 && (
+              <>
+                <h3 class="sec">Surfaced secrets</h3>
+                <ul class="secrets">
+                  {secrets.map((s) => (
+                    <li key={s.id}>
+                      <strong>{s.title}</strong> — {s.detail}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {doneLoops.length > 0 && (
+              <>
+                <h3 class="sec">Closed loops</h3>
+                <ul class="loops closed">
+                  {doneLoops.map((l) => (
+                    <li key={l.id} class="loop">
+                      <div class="loop-title">
+                        {l.title} <span class="loop-meta">— {l.status}</span>
+                      </div>
+                      {l.resolutionNote && <div class="loop-detail">{l.resolutionNote}</div>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </TabView>
   )
 }

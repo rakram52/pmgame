@@ -7,7 +7,7 @@ import { z } from 'zod'
  * delta; code owns and validates everything here.
  */
 
-export const SCHEMA_VERSION = 5
+export const SCHEMA_VERSION = 7
 
 // ---------------------------------------------------------------------------
 // Small enums / leaf schemas
@@ -56,6 +56,25 @@ export type TurnKind = z.infer<typeof TurnKindSchema>
 
 export const RiskSchema = z.enum(['easy', 'moderate', 'hard', 'desperate'])
 export type Risk = z.infer<typeof RiskSchema>
+
+/** A LIVE, clock-held encounter that plays out over several beats — a summit
+ *  across the table, a COBRA room, or an ordinary-week 1:1 (briefing a minister,
+ *  confronting a plotter). While it is open the calendar does NOT advance; the
+ *  ENGINE owns the beat count and force-closes it at `maxBeats`, so it always
+ *  resolves. Opened by the scheduler (multi-beat set-pieces) OR proposed by the
+ *  narrator via the delta's `encounter` signal (contextual 1:1s). */
+export const ActiveSceneSchema = z.object({
+  /** The turn-kind this scene belongs to (`standard` for a contextual 1:1). */
+  kind: TurnKindSchema.default('standard'),
+  /** Who/what the encounter is with — surfaced in the banner (e.g. the capital
+   *  for a summit, "the Chancellor" for a briefing). */
+  focus: z.string().default(''),
+  /** 1-based current beat. */
+  beat: z.number().default(1),
+  /** Hard cap on beats — the engine ends the scene when `beat` reaches this. */
+  maxBeats: z.number().default(3),
+})
+export type ActiveScene = z.infer<typeof ActiveSceneSchema>
 
 // ---------------------------------------------------------------------------
 // Records (every collection element carries a stable id)
@@ -226,6 +245,39 @@ export const DoctrineSchema = z.object({
 export type Doctrine = z.infer<typeof DoctrineSchema>
 
 // ---------------------------------------------------------------------------
+// National indicators — the real-world numbers the government is judged on
+// (net migration, NHS waiting list, inflation, the deficit, ...). Grouped by
+// `domain` so the State tab can show an Economy dashboard and hang each social
+// metric under the doctrine dial it belongs to. Seeded from real data at
+// government formation; nudged by the narrator (as clamped deltas) as the
+// premiership plays out. `value` is stored in human-readable magnitude (e.g.
+// 906 with suffix "k" for net migration) so deltas read naturally.
+// ---------------------------------------------------------------------------
+
+/** Where an indicator is surfaced: the macro/budget dashboards, or a doctrine
+ *  dial (by DoctrineKey). 'macro' avoids colliding with the 'economy' dial. */
+export const INDICATOR_DOMAINS = ['macro', 'fiscal', ...DOCTRINE_KEYS] as const
+export type IndicatorDomain = (typeof INDICATOR_DOMAINS)[number]
+
+export const IndicatorSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  /** 'macro' | 'fiscal' | a DoctrineKey — drives where it renders. */
+  domain: z.string(),
+  value: z.number(),
+  min: z.number().default(0),
+  max: z.number().default(100),
+  prefix: z.string().default(''), // e.g. '£'
+  suffix: z.string().default(''), // e.g. '%', 'k', 'm', 'bn'
+  trend: TrendSchema.default('steady'),
+  /** 1 = up is good, -1 = down is good, 0 = neutral/contested (colours deltas). */
+  goodDir: z.number().default(0),
+  note: z.string().default(''),
+  lastUpdatedWeek: z.number().default(1),
+})
+export type Indicator = z.infer<typeof IndicatorSchema>
+
+// ---------------------------------------------------------------------------
 // Calendar / RNG / house rules
 // ---------------------------------------------------------------------------
 
@@ -310,11 +362,17 @@ export const GameStateSchema = z.object({
   /** Small human label a set-piece needs surfaced (e.g. the summit's capital),
    *  set by the scheduler so the prompt and the banner agree. */
   setpieceContext: z.string().default(''),
+  /** The live multi-beat encounter in progress, or null on an ordinary turn.
+   *  While non-null the clock is held and the same scene continues beat to beat. */
+  activeScene: ActiveSceneSchema.nullable().default(null),
 
   rng: RngStateSchema,
   calendar: CalendarSchema,
   doctrine: DoctrineSchema,
   stateBlock: StateBlockSchema,
+  /** Real-world national indicators (economy, fiscal, doctrine-linked social
+   *  metrics). Seeded at formation, nudged by the narrator over the premiership. */
+  indicators: z.array(IndicatorSchema).default([]),
 
   cabinet: z.array(CastMemberSchema).default([]),
   standingCast: z.array(CastMemberSchema).default([]),

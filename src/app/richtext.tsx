@@ -1,10 +1,13 @@
 import type { ComponentChildren } from 'preact'
+import type { CastMember } from '../state/schema'
+import { parseDialogue, SPEAKER_PALETTE, type Dialogue } from './speakers'
 
 /**
  * Minimal, safe renderer for the narrator's scenes. No dangerouslySetInnerHTML —
  * everything is real text nodes. It handles **bold**, *italic*, inline
- * intelligence tags ([A1]…[D4]), and classifies `*[label]*` document lines into
- * wires, flashes, memos and front pages (US-401 / US-404).
+ * intelligence tags ([A1]…[D4]), classifies `*[label]*` document lines into
+ * wires, flashes, memos and front pages (US-401 / US-404), and colours each
+ * character's spoken lines by speaker (with a role tag for known cast).
  */
 
 // ---------------------------------------------------------------------------
@@ -91,7 +94,23 @@ function DocBlock({ type, label, body, keyBase }: { type: DocType; label: string
   )
 }
 
-export function RichText({ text }: { text: string }) {
+// ---------------------------------------------------------------------------
+// Dialogue rendering (one coloured line per speaker)
+// ---------------------------------------------------------------------------
+
+function DialogueLine({ d, keyBase }: { d: Dialogue; keyBase: string }) {
+  const color = SPEAKER_PALETTE[d.colorIndex]
+  return (
+    <p class="rt-dialogue" style={`--sp-color:${color}`}>
+      <span class="rt-speaker">{d.speaker}</span>
+      {d.roleTag && <span class="rt-role">{d.roleTag}</span>}
+      {d.aside && <span class="rt-aside"> ({d.aside})</span>}{' '}
+      <span class="rt-quote">{parseInline(d.quote, keyBase)}</span>
+    </p>
+  )
+}
+
+export function RichText({ text, cast = [] }: { text: string; cast?: CastMember[] }) {
   const lines = (text || '').split('\n')
   const out: ComponentChildren[] = []
   let i = 0
@@ -109,12 +128,18 @@ export function RichText({ text }: { text: string }) {
       const body: string[] = []
       if (m[2].trim()) body.push(m[2].trim())
       i++
-      // Absorb the following non-blank, non-tag lines as the document body.
-      while (i < lines.length && lines[i].trim() && !DOC_LINE_RE.test(lines[i])) {
+      // Absorb following non-blank, non-tag, non-dialogue lines as the doc body.
+      while (i < lines.length && lines[i].trim() && !DOC_LINE_RE.test(lines[i]) && !parseDialogue(lines[i], cast)) {
         body.push(lines[i].trim())
         i++
       }
       out.push(<DocBlock key={`d${i}`} type={type} label={label} body={body} keyBase={`d${i}`} />)
+      continue
+    }
+    const dialogue = parseDialogue(line, cast)
+    if (dialogue) {
+      out.push(<DialogueLine key={i} d={dialogue} keyBase={String(i)} />)
+      i++
       continue
     }
     out.push(

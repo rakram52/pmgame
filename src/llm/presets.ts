@@ -47,9 +47,9 @@ export const PRESETS: Preset[] = [
     label: 'DeepSeek',
     apiType: 'openai',
     baseUrl: 'https://api.deepseek.com',
-    defaultModel: 'deepseek-chat',
+    defaultModel: 'deepseek-v4-flash',
     keyUrl: 'https://platform.deepseek.com/api_keys',
-    note: 'Very cheap (~70p / 300 turns), good quality.',
+    note: 'Very cheap (~30–50p for a full 300-turn game via V4 Flash), strong quality. Prompts are sent to DeepSeek. deepseek-v4-flash is the sweet spot; use deepseek-v4-pro for higher quality. (The old deepseek-chat id retires 2026-07-24.)',
   },
   {
     id: 'groq',
@@ -91,6 +91,9 @@ export function presetById(id: string): Preset | undefined {
  */
 export const RETIRED_MODELS: Record<string, string> = {
   'deepseek/deepseek-chat-v3-0324:free': 'qwen/qwen3-next-80b-a3b-instruct:free',
+  // DeepSeek retires the bare `deepseek-chat` alias 2026-07-24; V4 Flash is the
+  // successor. No collision with OpenRouter's `deepseek/…`-prefixed slugs.
+  'deepseek-chat': 'deepseek-v4-flash',
 }
 
 /** Swap a retired model id for its replacement. Returns a NEW object only when

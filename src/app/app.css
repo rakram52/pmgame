@@ -70,6 +70,77 @@ input {
   font-size: 32px;
 }
 
+/* ---- in-tab sub-navigation (Dossier / State) ---- */
+.tabview {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* The scroll region sits below the pinned sub-nav, so it takes the remaining
+   height rather than the full tab and drops the safe-area top padding. */
+.tabview .screen-scroll {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  padding-top: 14px;
+}
+.subnav {
+  display: flex;
+  gap: 7px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 10px 14px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+}
+.subnav::-webkit-scrollbar {
+  display: none;
+}
+.subnav-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 15px;
+  border-radius: 999px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.subnav-btn:hover {
+  color: var(--ink);
+}
+.subnav-btn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1200;
+}
+.subnav-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+.subnav-btn.on .subnav-badge {
+  background: rgba(26, 18, 0, 0.28);
+  color: #1a1200;
+}
+
 /* ---- tab bar (always pinned to the bottom, above scrolling content) ---- */
 .tabs {
   display: grid;
@@ -422,6 +493,43 @@ button:disabled {
 }
 .rt-gap {
   height: 6px;
+}
+/* character dialogue — each speaker reads in their own colour, with a role tag
+ * for recognised cast. --sp-color is set per line from the speaker's palette slot. */
+.rt-dialogue {
+  margin: 0 0 8px;
+  padding: 1px 0 1px 12px;
+  border-left: 3px solid var(--sp-color, var(--line));
+}
+.rt-speaker {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 13.5px;
+  letter-spacing: 0.2px;
+  color: var(--sp-color, var(--ink));
+}
+.rt-role {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--sp-color, var(--ink-dim));
+  border: 1px solid var(--sp-color, var(--line));
+  border-radius: 5px;
+  padding: 0 4px;
+  margin-left: 5px;
+  vertical-align: 1px;
+  opacity: 0.85;
+}
+.rt-aside {
+  color: var(--ink-faint);
+  font-style: italic;
+  font-size: 0.9em;
+}
+.rt-quote {
+  color: var(--ink);
 }
 
 .warns {
@@ -823,35 +931,147 @@ textarea,
 .stat-val-sm {
   font-size: 17px;
 }
+.sec-note {
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin: -4px 0 12px;
+  line-height: 1.45;
+}
 .doctrine-list {
   list-style: none;
   padding: 0;
   margin: 0;
-}
-.doctrine-list li {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 13.5px;
-}
-.doc-row {
   display: flex;
+  flex-direction: column;
   gap: 10px;
 }
-.doc-key {
-  color: var(--ink-faint);
-  min-width: 96px;
-  text-transform: capitalize;
+.doc-item {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
 }
-.doc-val {
+.doc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.doc-title {
   flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.doc-badge {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  color: var(--accent-2);
+  font-size: 12px;
+  font-weight: 800;
+}
+.doc-stance {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-2);
+}
+.doc-detail {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  line-height: 1.45;
 }
 .doc-directive {
-  margin-top: 5px;
+  margin-top: 9px;
   font-size: 12.5px;
+  color: var(--ink);
+  border-left: 2px solid var(--accent);
+  padding-left: 10px;
+  line-height: 1.45;
+}
+.doc-directive-label {
+  display: block;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ink-faint);
+  margin-bottom: 2px;
+}
+
+/* ---- national indicators (Economy dashboards + doctrine metric chips) ---- */
+.ind-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.ind-tile {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+}
+.ind-top {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.ind-value {
+  font-size: 20px;
+  font-weight: 800;
   color: var(--accent-2);
-  font-style: italic;
-  border-left: 2px solid var(--line);
-  padding-left: 9px;
+}
+.ind-label {
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-top: 2px;
+}
+.ind-note {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+.ind-trend {
+  font-size: 12px;
+  line-height: 1;
+}
+.ind-trend.good {
+  color: var(--green);
+}
+.ind-trend.bad {
+  color: var(--red);
+}
+.ind-trend.flat {
+  color: var(--ink-faint);
+}
+.ind-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.ind-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.ind-chip-label {
+  color: var(--ink-dim);
+}
+.ind-chip-val {
+  color: var(--accent-2);
+  font-weight: 700;
 }
 .game-meta {
   display: flex;
@@ -1281,6 +1501,32 @@ textarea,
 .sp-banner.sp-budget { border-left-color: var(--sp-budget); background: linear-gradient(90deg, rgba(208,82,78,0.16), var(--bg-2) 60%); }
 .sp-banner.sp-reshuffle { border-left-color: var(--sp-reshuffle); background: linear-gradient(90deg, rgba(199,154,224,0.14), var(--bg-2) 60%); }
 .sp-banner.sp-election { border-left-color: var(--sp-election); background: linear-gradient(90deg, rgba(224,122,168,0.16), var(--bg-2) 60%); }
+.sp-banner.sp-encounter { border-left-color: var(--accent); background: linear-gradient(90deg, rgba(217,164,65,0.12), var(--bg-2) 60%); }
+.sp-banner.sp-encounter .sp-banner-kind { color: var(--accent-2); }
+
+/* live-encounter beat pips ("beat 2 of 3") */
+.sp-beats {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding-left: 10px;
+}
+.sp-beat {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink-faint);
+  opacity: 0.35;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+.sp-beat.on {
+  opacity: 1;
+  background: var(--accent);
+}
+.sp-banner.sp-cobra .sp-beat.on { background: var(--sp-cobra); }
+.sp-banner.sp-summit .sp-beat.on { background: var(--sp-summit); }
+.sp-banner.sp-pmqs .sp-beat.on { background: var(--sp-pmqs); }
 
 /* PM actions */
 .pm-actions {

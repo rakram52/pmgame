@@ -1,8 +1,20 @@
 import { useState } from 'preact/hooks'
-import type { GameState, TurnKind } from '../state/schema'
+import type { GameState, TurnKind, ActiveScene } from '../state/schema'
 import { TURN_KIND_META, initiableTurnKinds } from '../engine/turnKinds'
 import { CAPITAL_LEADERS } from '../game/links'
 import { Portrait } from './portrait'
+
+/** A little row of pips showing how far through a multi-beat encounter we are. */
+export function BeatDots({ scene }: { scene: ActiveScene }) {
+  if (scene.maxBeats <= 1) return null
+  return (
+    <span class="sp-beats" role="img" aria-label={`Beat ${scene.beat} of ${scene.maxBeats}`}>
+      {Array.from({ length: scene.maxBeats }, (_, i) => (
+        <span key={i} class={`sp-beat ${i < scene.beat ? 'on' : ''}`} />
+      ))}
+    </span>
+  )
+}
 
 /** The set-piece title shown in the banner (surfaces the capital for a summit). */
 function setpieceTitle(game: GameState): string {
@@ -36,6 +48,22 @@ export function SetpieceBanner({ game }: { game: GameState }) {
         <span class="sp-banner-kind">{meta.label}</span>
         <span class="sp-banner-title">{setpieceTitle(game)}</span>
       </div>
+      {game.activeScene && <BeatDots scene={game.activeScene} />}
+    </div>
+  )
+}
+
+/** A lightweight banner for a live 1:1 encounter on an ordinary week (no
+ *  set-piece chip). Shows who's in the room and how far through the exchange. */
+export function EncounterBanner({ scene }: { scene: ActiveScene }) {
+  if (scene.maxBeats <= 1) return null
+  return (
+    <div class="sp-banner sp-encounter" role="note">
+      <div class="sp-banner-main">
+        <span class="sp-banner-kind">In the room</span>
+        <span class="sp-banner-title">{scene.focus ? `Face to face — ${scene.focus}` : 'A conversation that matters'}</span>
+      </div>
+      <BeatDots scene={scene} />
     </div>
   )
 }

@@ -87,4 +87,31 @@ describe('applyDelta invariants', () => {
     const r = applyDelta({ ...s, chosenAction: 'x' }, { ...minimalDelta, foreignCapitals: [{ name: 'Tokyo', readDelta: 5, posture: 'watchful' }] }, 'scene')
     expect(r.state.foreignCapitals.find((c) => c.name === 'Tokyo')).toBeTruthy()
   })
+
+  it('applies an indicator value delta, clamped to its range, with trend/note', () => {
+    const s = base()
+    const before = s.indicators.find((i) => i.key === 'netMigration')!.value
+    const r = applyDelta(
+      { ...s, chosenAction: 'x' },
+      { ...minimalDelta, indicators: [{ key: 'netMigration', valueDelta: -30, trend: 'falling', note: 'returns deal lands' }] },
+      'scene',
+    )
+    const after = r.state.indicators.find((i) => i.key === 'netMigration')!
+    expect(after.value).toBe(before - 30)
+    expect(after.trend).toBe('falling')
+    expect(after.note).toBe('returns deal lands')
+  })
+
+  it('clamps an indicator delta and never lets it go below its floor', () => {
+    const s = base()
+    const r = applyDelta({ ...s, chosenAction: 'x' }, { ...minimalDelta, indicators: [{ key: 'netMigration', valueDelta: -99999 }] }, 'scene')
+    const after = r.state.indicators.find((i) => i.key === 'netMigration')!
+    expect(after.value).toBe(after.min)
+  })
+
+  it('surfaces (does not invent) an update for an unknown indicator', () => {
+    const s = base()
+    const r = applyDelta({ ...s, chosenAction: 'x' }, { ...minimalDelta, indicators: [{ key: 'notARealIndicator', valueDelta: 5 }] }, 'scene')
+    expect(r.warnings.join(' ')).toContain('notARealIndicator')
+  })
 })

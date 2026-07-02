@@ -63,3 +63,26 @@ export function setpieceSection(s: GameState): string | null {
   if (s.turnKind === 'standard') return null
   return BLOCKS[s.turnKind](s)
 }
+
+/**
+ * The LIVE-ENCOUNTER block — the beat mechanics for any clock-held scene, whether
+ * an engine-scheduled set-piece (summit / COBRA / PMQs) or a narrator-opened 1:1
+ * on an ordinary week. It sits ON TOP of the set-piece voice above (if any) and
+ * makes the pacing explicit: you are in the room, the clock is held, play ONE
+ * exchange, do not jump to next week. Null when no encounter is live.
+ */
+export function encounterSection(s: GameState): string | null {
+  const sc = s.activeScene
+  if (!sc) return null
+  const who = sc.focus ? ` with ${sc.focus}` : ''
+  const head = `You are IN THE ROOM${who}. This is a LIVE, face-to-face encounter and the clock is HELD — one continuous moment, not a week. It is BEAT ${sc.beat} of up to ${sc.maxBeats}.`
+
+  if (sc.beat < sc.maxBeats) {
+    return `${head}
+Do NOT resolve, summarise or wrap this up, and do NOT advance time or jump ahead. Play exactly ONE exchange: the PM's move lands, the other party answers IN CHARACTER — push back, bargain, probe, deflect, or raise the stakes — and the moment sharpens. Then offer three REGISTERS for how the PM carries the conversation forward (ways to play THIS exchange, not week-level policy), each honestly risk-tagged. Move only SMALL deltas this beat; hold the decisive swing and the keyHistory line until it resolves.
+To keep the conversation going another beat, include "encounter": { "open": true } in the delta. If it reaches its natural end THIS beat instead, include "encounter": { "resolve": true }, settle it, and append one keyHistory line.`
+  }
+
+  return `${head}
+This is the FINAL beat — bring it to a HEAD: the last exchange, who moved whom, the outcome and the fallout as the room breaks up. Apply the decisive delta now, append ONE keyHistory line, and include "encounter": { "resolve": true }. After this the week moves on.`
+}

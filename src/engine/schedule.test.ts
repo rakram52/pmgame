@@ -74,6 +74,20 @@ describe('scheduleTurnKind — priority order (US-101)', () => {
     const s = { ...base(), calendar: { ...base().calendar, week: 4 } }
     expect(scheduleTurnKind(s, rng())).toBe(scheduleTurnKind(s, rng()))
   })
+
+  it('a live encounter holds the floor: its kind wins over every other trigger', () => {
+    const scene = { kind: 'summit' as TurnKind, focus: 'Ankara', beat: 2, maxBeats: 3 }
+    // Even with a hot threat board and an expired locals countdown, the live
+    // summit keeps going until it resolves — we never cut away mid-conversation.
+    const s = {
+      ...base(),
+      activeScene: scene,
+      stateBlock: { ...base().stateBlock, threat: 5 },
+      calendar: { ...base().calendar, daysToLocals: 0 },
+      queuedTurnKind: 'reshuffle' as TurnKind,
+    }
+    expect(scheduleTurnKind(s, rng())).toBe('summit')
+  })
 })
 
 describe('foreign calendar (US-502)', () => {

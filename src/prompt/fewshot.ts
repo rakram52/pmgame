@@ -15,9 +15,9 @@ The Cabinet Room. Rachel Beaumont has her coffee untouched and her red folder cl
 
 *[PPS note, 09:14]* Chancellor briefed the lobby "no unfunded commitments" at 8. If you extend, she's on record against you before you've decided.
 
-"Twenty-two billion, Prime Minister," she says, finally looking up. "I can find it. I can't find it *and* keep the fiscal rules *and* keep the markets calm two days before you ask the country to trust us with the councils. Pick two."
+Beaumont (finally looking up): "Twenty-two billion, Prime Minister. I can find it. I can't find it *and* keep the fiscal rules *and* keep the markets calm two days before you ask the country to trust us with the councils. Pick two."
 
-The Chief Whip, quieter: "The benches will wear the money. What they won't wear is finding out from the *Mail* that we dithered."
+Dolan (quieter): "The benches will wear the money. What they won't wear is finding out from the *Mail* that we dithered."
 
 Whatever you choose is a story by tonight — the only question is whose.
 

@@ -30,3 +30,25 @@ describe('doctrine custom directives', () => {
     expect(snapshot).toContain('PM directive: No ECHR derogation without Cabinet sign-off.')
   })
 })
+
+describe('national indicators', () => {
+  it('seeds real-world indicators across macro, fiscal and doctrine domains', () => {
+    const s = initGameState(BASE, 'ind-seed')
+    const keys = s.indicators.map((i) => i.key)
+    expect(keys).toContain('netMigration')
+    expect(keys).toContain('nhsWaitList')
+    expect(keys).toContain('inflation')
+    expect(keys).toContain('deficit')
+    expect(s.indicators.some((i) => i.domain === 'macro')).toBe(true)
+    expect(s.indicators.some((i) => i.domain === 'fiscal')).toBe(true)
+    expect(s.indicators.some((i) => i.domain === 'immigration')).toBe(true)
+  })
+
+  it('surfaces the indicators in the prompt snapshot with their keys', () => {
+    const s = initGameState(BASE, 'ind-seed')
+    const snapshot = serializeSnapshot(s)
+    expect(snapshot).toContain('INDICATORS')
+    expect(snapshot).toContain('[netMigration]')
+    expect(snapshot).toContain('[nhsWaitList]')
+  })
+})

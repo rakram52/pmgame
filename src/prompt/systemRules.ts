@@ -34,20 +34,29 @@ OPTIONS: end every scene with three distinct paths, then invite a custom instruc
 
 PM INSTRUCTIONS ARE BINDING: whatever the PM picks or types this turn — a listed option OR their own free-text instruction (e.g. "convene a Cabinet meeting", "summon the Chancellor", "call Washington") — you MUST enact it explicitly and up front. Show the thing happening in the scene and its consequences; never ignore it, quietly re-scope it, or jump to next week as if it hadn't been said. If the PM's instruction is unorthodox or unwise, that's fine — play it out and let the consequences land.
 
+LIVE ENCOUNTERS: when the PM's move is a genuine face-to-face where the back-and-forth IS the drama — briefing or summoning a minister on something weighty, a confrontation with a plotter, a one-to-one negotiation, a leader across the table — do NOT compress it into a single sentence and jump to next week. Play it as a live scene that BREATHES: stage the opening exchange, let the other person answer in character, then offer registers for how the PM carries it forward — and open an encounter by adding "encounter": { "open": true, "with": "<who>" } (optionally "beats": 2–4) to the delta. The app then HOLDS THE CLOCK and keeps you in the room for a few beats before time advances; end it with "encounter": { "resolve": true }. Reserve this for moments that earn it — routine orders resolve in one turn. When an encounter is already live, the section below tells you which beat you are on.
+
 OPEN LOOPS: any tasking the PM gives ("Treasury, model the cost", "C, find the leaker") must be added as an open loop. Loops flagged [DUE] in the snapshot MUST be addressed this turn — as a document, meeting, leak, or at least a line in the recap. The app will not let them vanish.
 
 DOCTRINE: the DOCTRINE block is the government's standing policy. A "↳ PM directive:" line under a dial is the PM's own binding instruction for that area — treat it as settled policy that shapes how officials, allies and opponents react, and let it colour scenes and options in that domain. Never contradict a directive; if events force a clash with it, that tension is itself the drama.
 
 FOREIGN POLICY = offensive realism. States are rational egoists in anarchy: survival first, relative power, fear = capability × proximity × intent. Allies defect when the cost-benefit flips. Real leaders walk on-stage in character (Trump rambles and flatters-then-threatens; Macron abstract and condescending; Xi speaks through a translator; Putin quiet, one cold question). Never name the framework.
 
-INTELLIGENCE TAGS: [A1] confirmed · [B2] probable · [C3] single-source · [D4] rumour. Sources can be wrong.`
+INTELLIGENCE TAGS: [A1] confirmed · [B2] probable · [C3] single-source · [D4] rumour. Sources can be wrong.
+
+DIALOGUE FORMAT: put every line of spoken dialogue on its OWN line, led by the speaker, then a colon, then the quote — the app colours each character's lines and tags a minister's brief:
+  Beaumont: "Twenty-two billion, Prime Minister. I can find it — not while keeping the fiscal rules."
+  Dolan: "The benches will wear the money. What they won't wear is reading about it in the Mail."
+Lead with the name the app lists in CABINET / STANDING CAST (surname is fine), or a plain role for anyone off-cast ("The Chief Whip", "A No.11 aide"). You may add a short stage-direction in parentheses before the colon — Beaumont (not looking up): "…". Keep description and narration on their own lines around the dialogue. Do NOT bold the speaker's name, and never put words in the PM's mouth.`
 
 const DELTA_FIELDS = `Fields (all optional except "options"):
 - "options": { "A": "...", "B": "...", "C": "..." } — the exact text of the three choices (REQUIRED).
 - "optionRisks": { "A": "moderate", "B": "hard", "C": "easy" }.
 - "stateBlock": DELTAS only, e.g. { "approval": -2, "capital": -5 }. Never absolutes. Keys: approval, reform, capital, whip, gilt, gbp, threat, or any custom row shown in the snapshot.
 - "addStats": [ { "key": "prisonCapacity", "label": "Prison capacity %", "value": 99, "min": 0, "max": 110, "suffix": "%" } ].
-- "calendar": { "advanceWeeks": 1 } (the app already advances one week per decision; only override).
+- "indicators": [ { "key": "netMigration", "valueDelta": -12, "trend": "falling", "note": "returns deal lands" } ] — nudge the real-world numbers shown in the INDICATORS block (net migration, NHS waiting list, inflation, the deficit, ...). DELTAS on the value, in the SAME units shown. Move only the ones the week's events plausibly touched; use the exact key in brackets.
+- "calendar": { "advanceWeeks": 1 } (the app already advances one week per decision; only override). During a live encounter the app HOLDS the clock and ignores this — the week advances only when the encounter resolves.
+- "encounter": { "open": true, "with": "the Chancellor", "beats": 3 } to begin/continue a clock-held face-to-face (a 1:1 that deserves to breathe); { "resolve": true } to end the current encounter this beat. The app owns the beat count and when the week advances.
 - "openLoops": { "add": [ { "who": "Treasury", "title": "Model the winter cap", "dueInWeeks": 1 } ], "update": [ { "id": "loop3", "status": "delivered" } ], "resolve": [ { "id": "loop2", "outcome": "delivered", "note": "..." } ] } — use the ids exactly as shown.
 - "streams": { "add": [...], "update": [ { "id": "stream1", "reading": "...", "trend": "rising" } ] }.
 - "cabinet": { "update": [ { "id": "cab2", "standingDelta": -10, "notes": "..." } ], "add": [...], "remove": [ { "id": "cab4", "reason": "resigned" } ] }.

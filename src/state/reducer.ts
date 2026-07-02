@@ -1,13 +1,15 @@
 import type { GameState, GameStatus } from './schema'
 import type { TurnDelta } from './delta'
 import { clamp } from '../engine/resolve'
-import { isSetpiece } from '../engine/turnKinds'
+import { isSetpiece, MIN_ENCOUNTER_BEATS, MAX_ENCOUNTER_BEATS } from '../engine/turnKinds'
 import { computeEnding } from '../engine/endings'
 
 /** Next-cycle countdown reset after the locals resolve (annual cadence). */
 const NEXT_LOCALS_DAYS = 364
 const STAT_HISTORY_CAP = 60
 const SETPIECE_HISTORY_CAP = 40
+/** Default length for a narrator-proposed contextual encounter (engine-clamped). */
+const DEFAULT_ENCOUNTER_BEATS = 3
 
 /**
  * Applies a validated TurnDelta to canonical state. This is the anti-drift core.
@@ -42,6 +44,20 @@ export function applyDelta(prev: GameState, delta: TurnDelta, prose: string): Re
   const wasDecision = s.chosenAction.trim().length > 0
   const nid = (prefix: string) => `${prefix}${s.idCounter++}`
 
+  // Live-encounter bookkeeping (the engine owns the clock, not the model).
+  //   scene              — the encounter that was live when this beat's prompt was
+  //                        built (set by prepareTurn), or null on an ordinary turn.
+  //   resolvingEncounter — the narrator signalled the encounter ends this beat.
+  //   openingEncounter   — the narrator opened a contextual 1:1 on a standard week.
+  //   sceneEnding        — an existing scene finishes on this commit.
+  //   holdClock          — keep the calendar frozen (mid-encounter beat).
+  const scene = s.activeScene
+  const enc = delta.encounter
+  const resolvingEncounter = !!enc?.resolve
+  const openingEncounter = !scene && !!enc?.open && s.turnKind === 'standard'
+  const sceneEnding = scene ? resolvingEncounter || scene.beat >= scene.maxBeats : false
+  const holdClock = resolvingEncounter ? false : openingEncounter ? true : scene ? scene.beat < scene.maxBeats : false
+
   // 1. State-block deltas (deltas, not absolutes — clamped).
   if (delta.stateBlock) {
     for (const [key, d] of Object.entries(delta.stateBlock)) {
@@ -70,8 +86,24 @@ export function applyDelta(prev: GameState, delta: TurnDelta, prose: string): Re
     }
   }
 
-  // 3. Calendar. Each resolved decision advances ~one week by default.
-  const advance = delta.calendar?.advanceWeeks ?? (wasDecision ? 1 : 0)
+  // 2a. National indicators — nudged as clamped value deltas (never absolutes),
+  //     plus optional trend/note. Unknown keys are surfaced, not invented.
+  for (const u of delta.indicators ?? []) {
+    const ind = s.indicators.find((i) => i.key === u.key)
+    if (!ind) {
+      warnings.push(`Ignored update for unknown indicator "${u.key}".`)
+      continue
+    }
+    if (u.valueDelta != null) ind.value = clamp(ind.value + u.valueDelta, ind.min, ind.max)
+    if (u.trend) ind.trend = u.trend
+    if (u.note != null) ind.note = u.note
+    ind.lastUpdatedWeek = s.calendar.week
+  }
+
+  // 3. Calendar. Each resolved decision advances ~one week by default — UNLESS a
+  //    live encounter is holding the clock (a mid-encounter beat is one continuous
+  //    moment, not a week). The engine decides this; the model can't override it.
+  const advance = holdClock ? 0 : delta.calendar?.advanceWeeks ?? (wasDecision ? 1 : 0)
   if (advance !== 0) {
     s.calendar.week += advance
     s.calendar.dateISO = addDays(s.calendar.dateISO, advance * 7)
@@ -204,9 +236,10 @@ export function applyDelta(prev: GameState, delta: TurnDelta, prose: string): Re
     s.keyHistory.push({ week: s.calendar.week, turnIndex: s.turnIndex, summary: delta.keyHistoryAppend.trim() })
   }
 
-  // 9a. Set-piece log — record each set-piece week once (drives the balancer +
-  //     the timeline tags). The scene is generated on the turn its kind is set.
-  if (isSetpiece(s.turnKind)) {
+  // 9a. Set-piece log — record each set-piece ONCE (drives the balancer + the
+  //     timeline tags). A single-turn set-piece has no scene, so it records now;
+  //     a multi-beat one records only as it resolves, so it counts as one week.
+  if (isSetpiece(s.turnKind) && (!scene || sceneEnding)) {
     s.setpieceHistory.push({ week: s.calendar.week, turnIndex: s.turnIndex, kind: s.turnKind })
     if (s.setpieceHistory.length > SETPIECE_HISTORY_CAP) s.setpieceHistory = s.setpieceHistory.slice(-SETPIECE_HISTORY_CAP)
   }
@@ -248,6 +281,17 @@ export function applyDelta(prev: GameState, delta: TurnDelta, prose: string): Re
   s.chosenAction = ''
   s.chosenRisk = null
   s.queuedTurnKind = null
+
+  // 13a. Live-encounter lifecycle. End an existing scene on its final beat (or a
+  //      narrator resolve); otherwise let it run on (prepareTurn bumps the beat
+  //      next turn). Open a narrator-proposed contextual 1:1 on a standard week,
+  //      with the beat count clamped so it can never stall the premiership.
+  if (scene) {
+    s.activeScene = sceneEnding ? null : scene
+  } else if (openingEncounter) {
+    const beats = clamp(Math.round(enc?.beats ?? DEFAULT_ENCOUNTER_BEATS), MIN_ENCOUNTER_BEATS, MAX_ENCOUNTER_BEATS)
+    s.activeScene = { kind: 'standard', focus: (enc?.with ?? '').slice(0, 80), beat: 1, maxBeats: beats }
+  }
 
   // 14. Crisis tier — computed by code, model's hint is advisory only.
   s.status = computeStatus(s)
