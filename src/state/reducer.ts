@@ -280,7 +280,6 @@ export function applyDelta(prev: GameState, delta: TurnDelta, prose: string): Re
   s.pendingInjections = []
   s.chosenAction = ''
   s.chosenRisk = null
-  s.queuedTurnKind = null
 
   // 13a. Live-encounter lifecycle. End an existing scene on its final beat (or a
   //      narrator resolve); otherwise let it run on (prepareTurn bumps the beat

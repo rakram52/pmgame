@@ -162,7 +162,6 @@ export function initGameState(sel: SetupSelections, seedOverride?: string): Game
     turnIndex: 1,
     phase: 'play',
     turnKind: 'standard',
-    queuedTurnKind: null,
     setpieceHistory: [],
     setpieceContext: '',
     activeScene: null,

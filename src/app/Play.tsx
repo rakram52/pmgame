@@ -2,13 +2,13 @@ import { useState, useEffect, useRef } from 'preact/hooks'
 import type { GameState } from '../state/schema'
 import { THREAT_LABELS } from '../state/schema'
 import type { Connection } from '../llm/types'
-import { chooseAction, applyReply, prepareAndBuild, runTurnAuto, queueTurnKind, type ApplyResult } from '../game/controller'
+import { chooseAction, applyReply, prepareAndBuild, runTurnAuto, type ApplyResult } from '../game/controller'
 import { buildRepairPrompt } from '../prompt/repair'
 import { copyText, readClipboard, chatUrl } from './clipboard'
 import { RichText } from './richtext'
 import { Gauge, ThreatPips, Sparkline, DeltaTag, lastSampleDelta, approvalTone, threatTone } from './meters'
-import { SetpieceChip, SetpieceBanner, EncounterBanner, PmActions } from './setpiece'
-import { BudgetSheet, ReshuffleSheet } from './setpieceInputs'
+import { SetpieceChip, SetpieceBanner, EncounterBanner } from './setpiece'
+import { BudgetSheet } from './setpieceInputs'
 import { WhyChanged } from './progress'
 import { Summary } from './Summary'
 import { computeEnding } from '../engine/endings'
@@ -292,8 +292,6 @@ export function Play({ game, connection, onCommit, onNewGame }: { game: GameStat
         </div>
       ) : game.turnKind === 'budget' && game.options ? (
         <BudgetSheet game={game} onConfirm={(a, r, inj) => act(a, r, inj)} busy={autoBusy} />
-      ) : game.turnKind === 'reshuffle' && game.options ? (
-        <ReshuffleSheet game={game} onConfirm={(a, r, inj) => act(a, r, inj)} busy={autoBusy} />
       ) : (
         game.options && (
           <div class="choices">
@@ -314,7 +312,6 @@ export function Play({ game, connection, onCommit, onNewGame }: { game: GameStat
                 Send instruction
               </button>
             </div>
-            <PmActions game={game} onQueue={(k) => onCommit(queueTurnKind(game, k))} />
           </div>
         )
       )}

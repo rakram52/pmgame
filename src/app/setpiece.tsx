@@ -1,6 +1,5 @@
-import { useState } from 'preact/hooks'
 import type { GameState, TurnKind, ActiveScene } from '../state/schema'
-import { TURN_KIND_META, initiableTurnKinds } from '../engine/turnKinds'
+import { TURN_KIND_META } from '../engine/turnKinds'
 import { CAPITAL_LEADERS } from '../game/links'
 import { Portrait } from './portrait'
 
@@ -68,41 +67,3 @@ export function EncounterBanner({ scene }: { scene: ActiveScene }) {
   )
 }
 
-/** The "PM actions" affordance (US-106): queue an eligible set-piece for the
- *  next turn. `onQueue(null)` cancels a pending queue. */
-export function PmActions({ game, onQueue }: { game: GameState; onQueue: (kind: TurnKind | null) => void }) {
-  const [open, setOpen] = useState(false)
-  const options = initiableTurnKinds(game)
-  const queued = game.queuedTurnKind && game.queuedTurnKind !== 'standard' ? game.queuedTurnKind : null
-
-  return (
-    <div class="pm-actions">
-      <button class="ghost pm-actions-btn" onClick={() => setOpen((o) => !o)}>
-        ⋯ PM actions
-      </button>
-
-      {queued && (
-        <div class="queued-note">
-          <span>
-            Next week: <strong>{TURN_KIND_META[queued].label}</strong> queued
-          </span>
-          <button class="link" onClick={() => onQueue(null)}>
-            cancel
-          </button>
-        </div>
-      )}
-
-      {open && (
-        <div class="pm-sheet">
-          <div class="pm-sheet-head">Convene a set-piece next week</div>
-          {options.map((k) => (
-            <button key={k} class={`pm-sheet-item ${queued === k ? 'sel' : ''}`} onClick={() => { onQueue(k); setOpen(false) }}>
-              <span class={`sp-chip sp-${k}`}>{TURN_KIND_META[k].label}</span>
-              <span class="pm-sheet-blurb">{TURN_KIND_META[k].blurb}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}

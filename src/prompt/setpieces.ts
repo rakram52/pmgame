@@ -47,9 +47,9 @@ When you later narrate the reaction, move gilt, gbp, approval, capital and any r
   },
 
   reshuffle: () =>
-    `This week is a CABINET RESHUFFLE. Set the scene: the summonses to Number 10, the carrying-out of red boxes, the corridor rumours. The APP will present the PM with a structured personnel interface, so the PM's decision will arrive as a list of moves (promote / move / sack, with names) rather than a single sentence.
-Still provide three options as broad fallback framings (e.g. a loyalist consolidation / a balancing act / a ruthless clear-out), honestly risk-tagged — but expect the real decision to be the moves.
-When you narrate the fallout, return a cabinet delta (update/remove/add) and adjust standings: the promoted rise, the snubbed and sacked fall (a sacking can start to plot). Append a one-line keyHistory recording the reshuffle's shape.`,
+    `This week is a CABINET RESHUFFLE, driven by the PM's own instruction (the moves they named — promote / move / sack). Set the scene: the summonses to Number 10, the carrying-out of red boxes, the corridor rumours — and carry out exactly what the PM asked.
+Frame the three options as how the PM handles the fallout (e.g. sell it as renewal / face down the snubbed / go quiet and let it settle), honestly risk-tagged.
+Return a cabinet delta (update/remove/add) and adjust standings: the promoted rise, the snubbed and sacked fall (a sacking can start to plot). Append a one-line keyHistory recording the reshuffle's shape.`,
 
   election: () =>
     `This week is ELECTION NIGHT (the local elections). The engine has already computed the result and handed it to you in an ELECTION RESULT directive above — narrate THOSE numbers faithfully; do not invent a different result. Stage a single election-night scene: the results desk, a defining hold or loss, the reaction on the benches and in the leader's office.

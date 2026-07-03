@@ -354,9 +354,6 @@ export const GameStateSchema = z.object({
 
   /** What KIND of week this is — resolved in code by the scheduler each turn. */
   turnKind: TurnKindSchema.default('standard'),
-  /** A player-requested set-piece for the NEXT turn (agency between forced
-   *  decisions). Consumed and cleared by the reducer once the turn commits. */
-  queuedTurnKind: TurnKindSchema.nullable().default(null),
   /** Code-owned log of the set-pieces that have fired, capped, for the balancer. */
   setpieceHistory: z.array(SetpieceHistoryEntrySchema).default([]),
   /** Small human label a set-piece needs surfaced (e.g. the summit's capital),

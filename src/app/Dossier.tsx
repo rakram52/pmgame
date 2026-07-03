@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks'
 import type { GameState, CastMember, ForeignCapital, OpenLoop } from '../state/schema'
 import { TERMINAL_LOOP_STATUSES } from '../state/schema'
 import { isLoopDue } from '../prompt/builder'
+import { forecast } from '../engine/forecast'
 import { loopsForActor, loopsForCapital, resolveLoopActor, CAPITAL_LEADERS } from '../game/links'
 import { BipolarBar, signed } from './meters'
 import { TURN_KIND_META } from '../engine/turnKinds'
@@ -93,8 +94,7 @@ export function Dossier({ game }: { game: GameState }) {
   const doneLoops = game.openLoops.filter((l) => TERMINAL_LOOP_STATUSES.includes(l.status))
   const secrets = game.buriedButLive.filter((s) => s.triggered)
   const dueCount = liveLoops.filter((l) => isLoopDue(l, week)).length
-
-  const queued = game.queuedTurnKind && game.queuedTurnKind !== 'standard' ? game.queuedTurnKind : null
+  const horizon = forecast(game)
 
   const sections: SectionDef[] = [
     { key: 'agenda', label: 'Agenda', badge: dueCount },
@@ -109,22 +109,26 @@ export function Dossier({ game }: { game: GameState }) {
       <div class="dossier screen-scroll">
         {section === 'agenda' && (
           <>
-            {(game.turnKind !== 'standard' || queued) && (
+            {game.turnKind !== 'standard' && (
               <div class="this-week">
-                {game.turnKind !== 'standard' && (
-                  <div class="tw-row">
-                    <span class="tw-label">This week</span>
-                    <SetpieceChip kind={game.turnKind} />
-                    <span class="tw-blurb">{TURN_KIND_META[game.turnKind].blurb}</span>
-                  </div>
-                )}
-                {queued && (
-                  <div class="tw-row">
-                    <span class="tw-label">Next week</span>
-                    <SetpieceChip kind={queued} />
-                    <span class="tw-blurb">{TURN_KIND_META[queued].blurb}</span>
-                  </div>
-                )}
+                <div class="tw-row">
+                  <span class="tw-label">This week</span>
+                  <SetpieceChip kind={game.turnKind} />
+                  <span class="tw-blurb">{TURN_KIND_META[game.turnKind].blurb}</span>
+                </div>
+              </div>
+            )}
+
+            {horizon.length > 0 && (
+              <div class="horizon">
+                <div class="horizon-head">On the horizon</div>
+                <ul class="horizon-list">
+                  {horizon.map((h, i) => (
+                    <li key={i} class={`horizon-item hz-${h.kind}`}>
+                      {h.text}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

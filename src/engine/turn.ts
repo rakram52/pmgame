@@ -6,6 +6,7 @@ import { scheduleTurnKind, summitFocusCapital } from './schedule'
 import { computeElectionResult } from './setpieceLogic'
 import { isMultiBeat, TURN_KIND_META } from './turnKinds'
 import { SETTLING_WEEKS } from './pacing'
+import { decayOpenLoops } from './loops'
 
 export { scheduleTurnKind } from './schedule'
 
@@ -76,17 +77,25 @@ export function prepareTurn(input: GameState): GameState {
         }
       }
     }
+
+    // 6. Loop decay: a tasking left to rot past its deadline slips, then lapses —
+    //    neglect carries a narrated cost (deterministic, one transition at a time).
+    if (pastSettling) {
+      const decay = decayOpenLoops(state.openLoops, state.calendar.week)
+      state.openLoops = decay.loops
+      injections.push(...decay.injections)
+    }
   }
 
   // Attach rolls BEFORE scheduling so the scheduler can react to a fresh event.
   state.pendingRolls = rolls
 
-  // 6. Resolve this week's KIND in code (drift-proof). Must come after the event
+  // 7. Resolve this week's KIND in code (drift-proof). Must come after the event
   //    roll and before the prompt is built. A live encounter keeps its kind.
   const kind = scheduleTurnKind(state, rng)
   state.turnKind = kind
 
-  // 7. Live-encounter lifecycle. A scheduled multi-beat set-piece OPENS its scene
+  // 8. Live-encounter lifecycle. A scheduled multi-beat set-piece OPENS its scene
   //    here; a continuation beat advances to the next beat. (Contextual 1:1s are
   //    opened by the reducer from the narrator's `encounter` signal, then flow
   //    through this same beat-advance.) The engine owns the beat count.
@@ -98,7 +107,7 @@ export function prepareTurn(input: GameState): GameState {
     state.activeScene = { kind, focus: sceneFocus(kind, state, rolls), beat: 1, maxBeats: TURN_KIND_META[kind].beats }
   }
 
-  // 8. Per-kind context + engine-computed numbers the model must narrate. The
+  // 9. Per-kind context + engine-computed numbers the model must narrate. The
   //    encounter's focus (capital / crisis label) rides on activeScene so it
   //    survives across beats even once the world rolls are suppressed.
   state.setpieceContext = state.activeScene?.focus ?? ''

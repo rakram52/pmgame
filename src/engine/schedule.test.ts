@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { initGameState } from '../setup/init'
-import { scheduleTurnKind, foreignBeatDue, monthOf } from './schedule'
+import { scheduleTurnKind, summitFocusCapital, ripeSummitCapital, politicallyExposed, monthOf } from './schedule'
 import { Rng } from './rng'
-import { TURN_KIND_META, isSetpiece } from './turnKinds'
-import type { GameState, TurnKind } from '../state/schema'
+import type { GameState, OpenLoop, ForeignCapital, TurnKind } from '../state/schema'
 
 const SEL = {
   pmName: 'Sched PM',
@@ -24,23 +23,24 @@ function base(): GameState {
   }
 }
 
-function addDays(iso: string, days: number): string {
-  const d = new Date(iso + 'T00:00:00Z')
-  d.setUTCDate(d.getUTCDate() + days)
-  return d.toISOString().slice(0, 10)
-}
-
 const rng = () => new Rng('sch-seed', 0)
 
-describe('scheduleTurnKind — priority order (US-101)', () => {
+function loop(over: Partial<OpenLoop> = {}): OpenLoop {
+  return { id: 'l1', who: '', title: 't', detail: '', commissionedWeek: 1, dueWeek: 1, status: 'in-progress', resolutionNote: '', ...over }
+}
+function capital(name: string, over: Partial<ForeignCapital> = {}): ForeignCapital {
+  return { id: `c-${name}`, name, read: 0, posture: '', lastUpdatedWeek: 1, ...over }
+}
+const withWhip = (w: number): GameState => ({ ...base(), stateBlock: { ...base().stateBlock, whip: w } })
+
+describe('scheduleTurnKind — earned set-pieces (US-101)', () => {
   it('the opening turn is always standard', () => {
     const s = { ...base(), chosenAction: '', options: null }
     expect(scheduleTurnKind(s, rng())).toBe('standard')
   })
 
-  it('a player-queued set-piece wins outright', () => {
-    const s = { ...base(), queuedTurnKind: 'reshuffle' as TurnKind }
-    expect(scheduleTurnKind(s, rng())).toBe('reshuffle')
+  it('a calm week — no ripe thread, a steady PM — stays standard (nothing sprung)', () => {
+    expect(scheduleTurnKind(base(), rng())).toBe('standard')
   })
 
   it('fires election when the locals countdown has expired', () => {
@@ -60,22 +60,44 @@ describe('scheduleTurnKind — priority order (US-101)', () => {
     expect(scheduleTurnKind(foreign, rng())).toBe('summit')
   })
 
-  it('fires PMQs on the domestic cadence when the House is sitting', () => {
-    const s = { ...base(), calendar: { ...base().calendar, week: 4 } } // April → sitting
-    expect(scheduleTurnKind(s, rng())).toBe('pmqs')
+  it('earns a summit when a foreign engagement loop the PM built comes due', () => {
+    const s = {
+      ...base(),
+      foreignCapitals: [capital('Ankara', { read: 10 })],
+      openLoops: [loop({ title: 'Arrange the bilateral with Ankara', dueWeek: 1 })],
+    }
+    expect(scheduleTurnKind(s, rng())).toBe('summit')
   })
 
-  it('never schedules a set-piece directly after another (no back-to-back)', () => {
-    const s = { ...base(), turnKind: 'pmqs' as TurnKind, calendar: { ...base().calendar, week: 4 } }
+  it('does NOT earn a summit from a foreign loop that is not about engagement', () => {
+    const s = {
+      ...base(),
+      foreignCapitals: [capital('Ankara')],
+      openLoops: [loop({ title: 'Ankara migration statistics review', dueWeek: 1 })],
+    }
     expect(scheduleTurnKind(s, rng())).toBe('standard')
   })
 
-  it('is deterministic (same inputs → same kind)', () => {
-    const s = { ...base(), calendar: { ...base().calendar, week: 4 } }
-    expect(scheduleTurnKind(s, rng())).toBe(scheduleTurnKind(s, rng()))
+  it('earns PMQs when the PM is politically exposed (whip gone sour) and the House sits', () => {
+    expect(scheduleTurnKind(withWhip(-3), rng())).toBe('pmqs')
   })
 
-  it('a live encounter holds the floor: its kind wins over every other trigger', () => {
+  it('holds PMQs during the summer recess even when the PM is exposed', () => {
+    const s = { ...withWhip(-3), calendar: { week: 20, dateISO: '2026-08-17', daysToLocals: 300 } }
+    expect(scheduleTurnKind(s, rng())).toBe('standard')
+  })
+
+  it('never runs an earned set-piece directly after another (no back-to-back)', () => {
+    const s = { ...withWhip(-3), turnKind: 'pmqs' as TurnKind }
+    expect(scheduleTurnKind(s, rng())).toBe('standard')
+  })
+
+  it('fires the Budget in the autumn fixture window', () => {
+    const s = { ...base(), calendar: { week: 30, dateISO: '2026-11-16', daysToLocals: 300 } }
+    expect(scheduleTurnKind(s, rng())).toBe('budget')
+  })
+
+  it('a live encounter holds the floor over every other trigger', () => {
     const scene = { kind: 'summit' as TurnKind, focus: 'Ankara', beat: 2, maxBeats: 3 }
     // Even with a hot threat board and an expired locals countdown, the live
     // summit keeps going until it resolves — we never cut away mid-conversation.
@@ -84,76 +106,65 @@ describe('scheduleTurnKind — priority order (US-101)', () => {
       activeScene: scene,
       stateBlock: { ...base().stateBlock, threat: 5 },
       calendar: { ...base().calendar, daysToLocals: 0 },
-      queuedTurnKind: 'reshuffle' as TurnKind,
     }
     expect(scheduleTurnKind(s, rng())).toBe('summit')
   })
+
+  it('is deterministic (same inputs → same kind)', () => {
+    const s = withWhip(-3)
+    expect(scheduleTurnKind(s, rng())).toBe(scheduleTurnKind(s, rng()))
+  })
 })
 
-describe('foreign calendar (US-502)', () => {
-  it('summit beats recur every 6 weeks from week 5', () => {
-    expect(foreignBeatDue(5)).toBe(true)
-    expect(foreignBeatDue(11)).toBe(true)
-    expect(foreignBeatDue(6)).toBe(false)
+describe('summit focus follows the storyline (fixes the Ankara→Moscow jump)', () => {
+  it('centres on the capital the PM has a ripe engagement with, not the most hostile one', () => {
+    const s = {
+      ...base(),
+      foreignCapitals: [capital('Washington', { read: -35 }), capital('Ankara', { read: 10 })],
+      openLoops: [loop({ title: 'Arrange the bilateral with Ankara', dueWeek: 1 })],
+    }
+    expect(ripeSummitCapital(s)).toBe('Ankara')
+    expect(summitFocusCapital(s)).toBe('Ankara')
+  })
+
+  it('prefers the capital the live loops are most about even before one is due', () => {
+    const s = {
+      ...base(),
+      foreignCapitals: [capital('Moscow', { read: -40 }), capital('Berlin', { read: 15 })],
+      openLoops: [loop({ title: 'Deepen the Berlin defence partnership', dueWeek: 20 })],
+    }
+    expect(ripeSummitCapital(s)).toBeNull()
+    expect(summitFocusCapital(s)).toBe('Berlin')
+  })
+
+  it('falls back to the most hostile capital with a named leader when no thread is live', () => {
+    const s = { ...base(), openLoops: [], foreignCapitals: [capital('Washington', { read: -35 }), capital('Paris', { read: 10 })] }
+    expect(ripeSummitCapital(s)).toBeNull()
+    expect(summitFocusCapital(s)).toBe('Washington')
+  })
+})
+
+describe('politicallyExposed', () => {
+  it('true when the whip is deeply negative', () => {
+    expect(politicallyExposed(withWhip(-3))).toBe(true)
+  })
+
+  it('true when tasks pile up overdue', () => {
+    const s = {
+      ...base(),
+      calendar: { ...base().calendar, week: 10 },
+      openLoops: [loop({ id: 'a', dueWeek: 5 }), loop({ id: 'b', dueWeek: 6 })],
+    }
+    expect(politicallyExposed(s)).toBe(true)
+  })
+
+  it('false for a steady PM with a healthy whip and no rot', () => {
+    expect(politicallyExposed(base())).toBe(false)
+  })
+})
+
+describe('calendar helpers', () => {
+  it('reads the month from an ISO date', () => {
     expect(monthOf('2026-11-20')).toBe(11)
-  })
-})
-
-/** Drive the scheduler across a run, mimicking what the reducer commits, so the
- *  balance guardrail can be asserted over N weeks (US-204). */
-function simulate(weeks: number): { kinds: TurnKind[] } {
-  let s = base()
-  s = { ...s, calendar: { ...s.calendar, daysToLocals: 500 }, stateBlock: { ...s.stateBlock, threat: 3 } }
-  const r = rng()
-  const kinds: TurnKind[] = []
-  let iso = s.calendar.dateISO
-  for (let w = 1; w <= weeks; w++) {
-    s.calendar.week = w
-    s.calendar.dateISO = iso
-    const kind = scheduleTurnKind(s, r)
-    kinds.push(kind)
-    // mimic the reducer's commit
-    s.turnKind = kind
-    if (isSetpiece(kind)) s.setpieceHistory.push({ week: w, turnIndex: w, kind })
-    iso = addDays(iso, 7)
-  }
-  return { kinds }
-}
-
-describe('cadence & balance guardrail (US-204)', () => {
-  const { kinds } = simulate(52)
-
-  it('never runs two set-pieces back-to-back', () => {
-    for (let i = 1; i < kinds.length; i++) {
-      const both = isSetpiece(kinds[i]) && isSetpiece(kinds[i - 1])
-      expect(both, `weeks ${i},${i + 1} = ${kinds[i - 1]},${kinds[i]}`).toBe(false)
-    }
-  })
-
-  it('never runs three same-scope scheduled set-pieces in a row', () => {
-    const scopes = kinds
-      .filter((k) => TURN_KIND_META[k].scope && !TURN_KIND_META[k].reactive)
-      .map((k) => TURN_KIND_META[k].scope)
-    for (let i = 2; i < scopes.length; i++) {
-      const three = scopes[i] === scopes[i - 1] && scopes[i] === scopes[i - 2]
-      expect(three, `three ${scopes[i]} in a row at ${i}`).toBe(false)
-    }
-  })
-
-  it('keeps a home↔abroad mix (both scopes appear, neither dwarfs the other)', () => {
-    const setpieces = kinds.filter(isSetpiece)
-    const dom = setpieces.filter((k) => TURN_KIND_META[k].scope === 'domestic').length
-    const intl = setpieces.filter((k) => TURN_KIND_META[k].scope === 'international').length
-    expect(dom).toBeGreaterThan(0)
-    expect(intl).toBeGreaterThan(0)
-    const minShare = Math.min(dom, intl) / (dom + intl)
-    expect(minShare).toBeGreaterThanOrEqual(0.33)
-  })
-
-  it('produces genuine variety (multiple distinct set-pieces, <60% standard)', () => {
-    const distinct = new Set(kinds.filter(isSetpiece))
-    expect(distinct.size).toBeGreaterThanOrEqual(2)
-    const standardShare = kinds.filter((k) => k === 'standard').length / kinds.length
-    expect(standardShare).toBeLessThan(0.85)
   })
 })

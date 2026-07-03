@@ -78,7 +78,12 @@ export function App() {
   return (
     <div class="app">
       <main class="content">
-        {tab === 'play' && <Play game={game} connection={connection} onCommit={commit} onNewGame={() => setScreen('setup')} />}
+        {/* Play stays mounted across tab switches (hidden, not unmounted) so an
+            in-flight scene request survives navigation and any half-typed
+            instruction/reply isn't lost. */}
+        <div class={tab === 'play' ? 'tabpane' : 'tabpane hidden'} aria-hidden={tab === 'play' ? undefined : 'true'}>
+          <Play game={game} connection={connection} onCommit={commit} onNewGame={() => setScreen('setup')} />
+        </div>
         {tab === 'dossier' && <Dossier game={game} />}
         {tab === 'state' && <StatePanel game={game} />}
         {tab === 'settings' && (

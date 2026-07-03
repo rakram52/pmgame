@@ -16,7 +16,6 @@ describe('migrations (FR-16 — old saves keep loading)', () => {
     const full = initGameState(SEL, 'mig-seed') as Record<string, unknown>
     // Simulate an old blob: strip everything added since v1, mark it v1.
     delete full.turnKind
-    delete full.queuedTurnKind
     delete full.setpieceHistory
     delete full.setpieceContext
     delete full.activeScene
@@ -28,7 +27,6 @@ describe('migrations (FR-16 — old saves keep loading)', () => {
     const migrated = migrate(full)
     expect(migrated.schemaVersion).toBe(SCHEMA_VERSION)
     expect(migrated.turnKind).toBe('standard')
-    expect(migrated.queuedTurnKind).toBeNull()
     expect(migrated.setpieceHistory).toEqual([])
     expect(migrated.setpieceContext).toBe('')
     expect(migrated.activeScene).toBeNull()

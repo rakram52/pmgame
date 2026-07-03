@@ -1,8 +1,6 @@
 import { useState } from 'preact/hooks'
-import type { GameState, Risk, CastMember } from '../state/schema'
+import type { GameState, Risk } from '../state/schema'
 import { computeHeadroom, assessBudget } from '../engine/setpieceLogic'
-import { signed } from './meters'
-import { Portrait, castColor } from './portrait'
 
 export type SetpieceConfirm = (action: string, risk: Risk, injections: string[]) => void
 
@@ -75,78 +73,6 @@ export function BudgetSheet({ game, onConfirm, busy }: { game: GameState; onConf
 
       <button class="primary big block" onClick={confirm} disabled={busy}>
         Deliver the Budget →
-      </button>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Cabinet reshuffle (US-203) — intent-led personnel moves, model casts within
-// faction constraints
-// ---------------------------------------------------------------------------
-
-type Move = 'keep' | 'promote' | 'move' | 'sack'
-const MOVE_ORDER: Move[] = ['keep', 'promote', 'move', 'sack']
-const MOVE_LABEL: Record<Move, string> = { keep: 'Keep', promote: 'Promote', move: 'Move', sack: 'Sack' }
-
-function standingTone(s: number): string {
-  return s < 0 ? 'neg' : s > 30 ? 'pos' : ''
-}
-
-export function ReshuffleSheet({ game, onConfirm, busy }: { game: GameState; onConfirm: SetpieceConfirm; busy: boolean }) {
-  const [moves, setMoves] = useState<Record<string, Move>>({})
-  const cabinet = game.cabinet
-
-  function cycle(id: string) {
-    setMoves((m) => {
-      const cur = m[id] ?? 'keep'
-      const next = MOVE_ORDER[(MOVE_ORDER.indexOf(cur) + 1) % MOVE_ORDER.length]
-      return { ...m, [id]: next }
-    })
-  }
-
-  const changes = cabinet.filter((c) => (moves[c.id] ?? 'keep') !== 'keep')
-  const sacks = changes.filter((c) => moves[c.id] === 'sack').length
-
-  function confirm() {
-    const desc = changes.map((c) => `${MOVE_LABEL[moves[c.id]]} ${c.name} (${c.role})`).join('; ')
-    const body = desc || 'no changes — a reshuffle that reshuffles nothing, which is a story in itself'
-    const action =
-      `RESHUFFLE — the PM's moves: ${body}. Narrate the fallout and return a cabinet delta (update / remove / add): ` +
-      `the promoted rise in standing, the snubbed and the sacked fall (a sacking can begin to plot). Cast any replacements within faction constraints.`
-    const risk: Risk = sacks >= 4 ? 'desperate' : sacks >= 2 ? 'hard' : 'moderate'
-    onConfirm(action, risk, [])
-  }
-
-  return (
-    <div class="sp-input reshuffle-input">
-      <div class="sp-input-head">
-        <span class="sp-input-title">Reshape the Cabinet</span>
-        <span class="reshuffle-count">{changes.length} move{changes.length === 1 ? '' : 's'}</span>
-      </div>
-      <p class="reshuffle-hint">Tap a minister to cycle Keep → Promote → Move → Sack.</p>
-
-      <ul class="reshuffle-list">
-        {cabinet.map((m: CastMember) => {
-          const mv = moves[m.id] ?? 'keep'
-          return (
-            <li key={m.id} class={`reshuffle-row mv-${mv}`}>
-              <Portrait seed={m.id + m.name} label={m.name} color={castColor(m.faction)} size={30} />
-              <div class="reshuffle-who">
-                <span class="reshuffle-name">{m.name}</span>
-                <span class="reshuffle-role">{m.role}</span>
-              </div>
-              <span class={`standing-tag ${standingTone(m.standing)}`}>{signed(m.standing)}</span>
-              <button class={`move-btn move-${mv}`} onClick={() => cycle(m.id)}>
-                {MOVE_LABEL[mv]}
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-
-      <button class="primary big block" onClick={confirm} disabled={busy}>
-        {changes.length ? 'Carry out the reshuffle →' : 'Leave the Cabinet unchanged →'}
       </button>
     </div>
   )

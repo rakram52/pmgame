@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { chooseAction, applyReply, queueTurnKind } from './controller'
+import { chooseAction, applyReply } from './controller'
 import { initGameState } from '../setup/init'
 import type { GameState } from '../state/schema'
 
@@ -28,22 +28,6 @@ describe('set-piece flow', () => {
     const acted = chooseAction(budgetWeek, "BUDGET — the PM's package: NHS +£8bn.", 'hard', [injection])
     expect(acted.pendingInjections).toContain(injection)
     expect(acted.lastPrompt).toContain(injection)
-  })
-
-  it('a queued set-piece is scheduled next turn, then cleared on commit (US-106)', () => {
-    let s = queueTurnKind(midGame(), 'reshuffle')
-    expect(s.queuedTurnKind).toBe('reshuffle')
-
-    const acted = chooseAction(s, 'Do the thing', 'moderate')
-    expect(acted.turnKind).toBe('reshuffle') // scheduler consumed the queue
-
-    const r = applyReply(acted, reply(', "keyHistoryAppend": "Reshuffle done."'))
-    expect(r.ok).toBe(true)
-    if (r.ok) {
-      expect(r.state.turnKind).toBe('reshuffle')
-      expect(r.state.queuedTurnKind).toBeNull() // consumed
-      expect(r.state.setpieceHistory.some((h) => h.kind === 'reshuffle')).toBe(true)
-    }
   })
 
   it('election night fires when the locals expire, injects the result, and rolls the countdown on (US-501)', () => {

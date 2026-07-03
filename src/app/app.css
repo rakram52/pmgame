@@ -55,6 +55,14 @@ input {
   overflow: hidden;
   min-height: 0;
 }
+/* Play is kept mounted while other tabs show, so it must fill the pane when
+   active and take no space (nor be interactive) when hidden. */
+.tabpane {
+  height: 100%;
+}
+.tabpane.hidden {
+  display: none;
+}
 .screen-scroll {
   height: 100%;
   overflow-y: auto;
@@ -1529,60 +1537,54 @@ textarea,
 .sp-banner.sp-pmqs .sp-beat.on { background: var(--sp-pmqs); }
 
 /* PM actions */
-.pm-actions {
-  margin-top: 6px;
-}
-.pm-actions-btn {
-  width: 100%;
-  font-size: 13.5px;
-  color: var(--ink-dim);
-}
-.queued-note {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: var(--ink-dim);
-  background: var(--bg-2);
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-}
-.pm-sheet {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px;
+/* Dossier "On the horizon" — the code-owned look-ahead so the PM never flies
+   blind into the next turn. */
+.horizon {
+  margin-bottom: 16px;
+  padding: 12px;
   background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: 12px;
 }
-.pm-sheet-head {
-  font-size: 11px;
+.horizon-head {
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--ink-faint);
+  margin-bottom: 8px;
 }
-.pm-sheet-item {
+.horizon-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  text-align: left;
-  background: var(--bg-3);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
+  flex-direction: column;
+  gap: 7px;
 }
-.pm-sheet-item.sel {
-  border-color: var(--accent);
-}
-.pm-sheet-blurb {
-  font-size: 12.5px;
+.horizon-item {
+  position: relative;
+  padding-left: 14px;
+  font-size: 13px;
   color: var(--ink-dim);
-  flex: 1;
+  line-height: 1.35;
+}
+.horizon-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+.horizon-item.hz-cobra::before,
+.horizon-item.hz-pmqs::before {
+  background: var(--warn, #d98a3d);
+}
+.horizon-item.hz-election::before,
+.horizon-item.hz-summit::before {
+  background: var(--accent);
 }
 
 /* Dossier "This week" */
@@ -1707,80 +1709,6 @@ textarea,
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--accent-2);
-}
-
-/* Reshuffle */
-.reshuffle-count {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--ink-dim);
-}
-.reshuffle-hint {
-  font-size: 12.5px;
-  color: var(--ink-faint);
-  margin: -4px 0 0;
-}
-.reshuffle-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.reshuffle-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 11px;
-  background: var(--bg-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-.reshuffle-who {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-.reshuffle-name {
-  font-size: 14px;
-  font-weight: 700;
-}
-.reshuffle-role {
-  font-size: 11.5px;
-  color: var(--ink-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.move-btn {
-  min-width: 74px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--bg-3);
-  color: var(--ink-dim);
-  font-size: 12.5px;
-  font-weight: 700;
-}
-.move-btn.move-promote {
-  color: var(--green);
-  border-color: #1f4633;
-  background: #12261d;
-}
-.move-btn.move-move {
-  color: var(--sp-summit);
-  border-color: #2a3a56;
-  background: #141d2e;
-}
-.move-btn.move-sack {
-  color: var(--red);
-  border-color: #4a2530;
-  background: #201016;
-}
-.reshuffle-row.mv-sack {
-  opacity: 0.7;
 }
 
 /* ---- progress & data-viz (sparklines, trends, trace, dashboard, timeline) ---- */

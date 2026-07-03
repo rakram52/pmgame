@@ -4,6 +4,7 @@ import { RULES_CORE, OUTPUT_CONTRACT_CHAT, OUTPUT_CONTRACT_API } from './systemR
 import { FEW_SHOT } from './fewshot'
 import { setpieceSection, encounterSection } from './setpieces'
 import { SETTLING_WEEKS } from '../engine/pacing'
+import { forecast } from '../engine/forecast'
 
 export type PromptMode = 'chat' | 'api'
 
@@ -163,6 +164,16 @@ export function buildTurnPrompt(s: GameState, mode: PromptMode = 'chat'): string
       '',
       '━━━ DUE THIS WEEK — MUST ADDRESS ━━━',
       dueLoops.map((l) => `- ${l.id}: ${l.who ? l.who + ' — ' : ''}${l.title}`).join('\n'),
+    )
+  }
+
+  const horizon = forecast(s)
+  if (horizon.length) {
+    sections.push(
+      '',
+      '━━━ ON THE HORIZON — TEE IT UP (foreshadow, do not resolve) ━━━',
+      "Close the scene by gesturing at one or two of these so next week is never a cold open — a chaser email, a minister asking where a thing is, a diary note, a line of worry. Don't resolve them now; just let them press on the edges:",
+      horizon.map((h) => `- ${h.text}`).join('\n'),
     )
   }
 

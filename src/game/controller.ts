@@ -1,4 +1,4 @@
-import type { GameState, Risk, TurnKind } from '../state/schema'
+import type { GameState, Risk } from '../state/schema'
 import { prepareTurn } from '../engine/turn'
 import { buildTurnPrompt } from '../prompt/builder'
 import { extractDelta, type DeltaExtraction } from '../state/delta'
@@ -28,12 +28,6 @@ export function chooseAction(state: GameState, action: string, risk: Risk | null
     lastRawReply: '',
   }
   return prepareAndBuild(next)
-}
-
-/** Queue a player-initiated set-piece for the NEXT turn (US-106). A direct state
- *  edit — it doesn't advance a turn; the scheduler consumes it next `prepareTurn`. */
-export function queueTurnKind(state: GameState, kind: TurnKind | null): GameState {
-  return { ...structuredClone(state), queuedTurnKind: kind }
 }
 
 /** Ensure the turn is rolled and the copy-paste prompt is built (idempotent per turn). */

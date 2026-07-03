@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { chooseAction, applyReply, queueTurnKind } from './controller'
+import { chooseAction, applyReply } from './controller'
 import { initGameState } from '../setup/init'
 import { MAX_ENCOUNTER_BEATS } from '../engine/turnKinds'
 import type { GameState } from '../state/schema'
@@ -35,11 +35,21 @@ function midGame(over: Partial<GameState> = {}): GameState {
   }
 }
 
-describe('scheduled multi-beat set-piece (summit)', () => {
+describe('earned multi-beat set-piece (summit)', () => {
   it('runs three beats, holds the clock, then advances once and resolves', () => {
+    // A foreign thread the PM built has ripened (a due "bilateral with Ankara"
+    // loop) — that's what EARNS the summit, and it centres on Ankara, not on
+    // whoever happens to be most hostile.
+    const ripe = midGame({
+      foreignCapitals: [{ id: 'c1', name: 'Ankara', read: 10, posture: '', lastUpdatedWeek: 1 }],
+      openLoops: [
+        { id: 'l1', who: 'FCDO', title: 'Arrange the bilateral with Ankara', detail: '', commissionedWeek: 1, dueWeek: 3, status: 'in-progress', resolutionNote: '' },
+      ],
+    })
     // Beat 1 — the summit opens; the engine holds the clock immediately.
-    const b1 = chooseAction(queueTurnKind(midGame(), 'summit'), 'Fly to Ankara for the bilateral', 'moderate')
+    const b1 = chooseAction(ripe, 'Fly to Ankara for the bilateral', 'moderate')
     expect(b1.turnKind).toBe('summit')
+    expect(b1.activeScene?.focus).toBe('Ankara') // storyline-driven, not most-hostile
     expect(b1.activeScene?.beat).toBe(1)
     expect(b1.activeScene?.maxBeats).toBe(3)
 
@@ -109,7 +119,9 @@ describe('contextual 1:1 encounter on an ordinary week', () => {
   })
 
   it('ignores an open signal on a single-turn set-piece week (budget)', () => {
-    const acted = chooseAction(queueTurnKind(midGame(), 'budget'), 'BUDGET — package', 'hard')
+    // The Budget is the one fixed autumn fixture — a November date earns it.
+    const budgetWeek = midGame({ calendar: { week: 3, dateISO: '2026-11-16', daysToLocals: 300 } })
+    const acted = chooseAction(budgetWeek, 'BUDGET — package', 'hard')
     expect(acted.turnKind).toBe('budget')
     const r = applyReply(acted, reply(', "encounter": { "open": true, "with": "the OBR" }'))
     expect(r.ok).toBe(true)
